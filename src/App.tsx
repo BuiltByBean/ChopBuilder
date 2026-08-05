@@ -31,7 +31,9 @@ export default function App() {
     <div className="app">
       <header className="nav">
         <Link to="/" className="brand">
-          <span className="brand-mark">C</span>
+          <span className="brand-mark">
+            <Metro size={14} />
+          </span>
           Chop<em>Builder</em>
         </Link>
         <nav className="nav-links">

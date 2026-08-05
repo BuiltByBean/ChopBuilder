@@ -1,14 +1,17 @@
 import { useCallback, useEffect } from 'react'
 import { BPM_MAX, BPM_MIN, type Subdivision, type Timbre } from '../../audio/metronome'
 import { metronome } from '../../audio/metronome'
-import { useMetronome, useBeat, useTapTempo } from '../../state/useMetronome'
+import { useMetronome, useTapTempo } from '../../state/useMetronome'
 import { BeatLights } from './BeatLights'
 import { SUBDIVISIONS, TEMPO_PRESETS, TIMBRES, rangeStyle, tempoName, useDragTempo } from './shared'
 import { Minus, Pause, Play, Plus, Trend, Volume } from '../icons'
 
+const SCALE_TICKS = [20, 80, 140, 200, 260, 300]
+/** Must match the range thumb size in global.css. */
+const THUMB_PX = 13
+
 export function MetronomeFull() {
   const { settings, running, update, setBpm, nudge, setTrainer, toggle, preview } = useMetronome()
-  const beat = useBeat()
   const { tap, count } = useTapTempo(setBpm)
   const drag = useDragTempo(
     useCallback(() => metronome.settings.bpm, []),
@@ -56,13 +59,7 @@ export function MetronomeFull() {
 
           <div className="tempo-core">
             <div
-              key={beat.isBeat ? beat.tick : 'idle'}
-              className={`tempo-ring${beat.isBeat ? ' pulse' : ''}${
-                beat.state === 'accent' ? ' accent' : ''
-              }`}
-            />
-            <div
-              className={`tempo-value${running ? ' running' : ''}`}
+              className="tempo-value"
               title="Drag up or down to change the tempo"
               role="spinbutton"
               tabIndex={0}
@@ -73,17 +70,20 @@ export function MetronomeFull() {
               {...drag}
             >
               {settings.bpm}
-              <span className="tempo-unit">BPM</span>
             </div>
-            <div className="tempo-name">{tempoName(settings.bpm)}</div>
+            <div className="tempo-meta">
+              <span>BPM</span>
+              <i />
+              <span>{tempoName(settings.bpm)}</span>
+            </div>
           </div>
 
           <div className="tempo-side right">
-            <button className="nudge" onClick={() => nudge(10)} aria-label="Increase 10 BPM">
-              +10
-            </button>
             <button className="nudge" onClick={() => nudge(1)} aria-label="Increase 1 BPM">
               +1
+            </button>
+            <button className="nudge" onClick={() => nudge(10)} aria-label="Increase 10 BPM">
+              +10
             </button>
           </div>
         </div>
@@ -98,13 +98,22 @@ export function MetronomeFull() {
             onChange={(e) => setBpm(Number(e.target.value))}
             aria-label="Tempo slider"
           />
-          <div className="tempo-scale">
-            <span>{BPM_MIN}</span>
-            <span>80</span>
-            <span>140</span>
-            <span>200</span>
-            <span>260</span>
-            <span>{BPM_MAX}</span>
+          <div className="tempo-scale" aria-hidden="true">
+            {SCALE_TICKS.map((v) => (
+              <span
+                key={v}
+                style={{
+                  // The thumb's centre only travels (track − thumb), so map ticks
+                  // over that span rather than the full width or they drift by
+                  // half a thumb at each end.
+                  left: `calc(${THUMB_PX / 2}px + (100% - ${THUMB_PX}px) * ${
+                    (v - BPM_MIN) / (BPM_MAX - BPM_MIN)
+                  })`,
+                }}
+              >
+                {v}
+              </span>
+            ))}
           </div>
         </div>
 
@@ -116,11 +125,12 @@ export function MetronomeFull() {
             onClick={toggle}
             aria-label={running ? 'Stop metronome' : 'Start metronome'}
           >
-            {running ? <Pause size={30} /> : <Play size={30} />}
+            {running ? <Pause size={14} /> : <Play size={14} />}
+            {running ? 'Stop' : 'Start'}
           </button>
           <button className="tap-btn" onClick={tap}>
-            TAP
-            <small>{count > 1 ? `${count} taps` : 'tempo'}</small>
+            Tap
+            <small>{count > 1 ? `${count}` : 'tempo'}</small>
           </button>
         </div>
 
