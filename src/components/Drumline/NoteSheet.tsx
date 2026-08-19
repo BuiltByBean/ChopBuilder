@@ -4,12 +4,14 @@ import { orderedCheckpoints, useDrumline } from '../../state/useDrumline'
 import { usePrefs } from '../../state/usePrefs'
 import { useToast } from '../../state/useToast'
 import { Sheet } from '../Sheet'
+import { PickerField } from '../PickerSheet'
 import { Mic } from '../icons'
 
 /**
  * The 25-seconds-between-reps capture surface. Open → field is focused →
- * type or speak → tap a tag. The tag IS the save button; the sheet closes
- * itself and an undo toast covers mistakes. No confirmations, ever.
+ * type or speak → Save. Tags are a single-select row (your last tag comes
+ * preselected, so a repeat note is type-then-save). Saving closes the sheet;
+ * an undo toast covers mistakes. No confirmations, ever.
  */
 
 // Minimal typings for the Web Speech API (not in lib.dom).
@@ -89,6 +91,15 @@ function useSpeech(onText: (text: string) => void) {
 
 const LAST_TAG_KEY = 'chopbuilder:lastNoteTag'
 
+function readLastTag(): NoteTag | null {
+  try {
+    const raw = localStorage.getItem(LAST_TAG_KEY)
+    return raw && (NOTE_TAGS as readonly string[]).includes(raw) ? (raw as NoteTag) : null
+  } catch {
+    return null
+  }
+}
+
 export function NoteSheet({
   playerId,
   defaultCheckpointId = null,
@@ -107,6 +118,7 @@ export function NoteSheet({
   const show = useToast((s) => s.show)
 
   const [body, setBody] = useState('')
+  const [tag, setTag] = useState<NoteTag | null>(readLastTag)
   const [cpLink, setCpLink] = useState(defaultCheckpointId ?? '')
   const areaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -123,9 +135,11 @@ export function NoteSheet({
   }, [])
   const { supported, listening, toggle } = useSpeech(appendSpoken)
 
-  const save = (tag: NoteTag) => {
+  const ready = !!body.trim() && !!tag
+
+  const save = () => {
     const trimmed = body.trim()
-    if (!trimmed) return
+    if (!trimmed || !tag) return
     try {
       localStorage.setItem(LAST_TAG_KEY, tag)
     } catch {
@@ -143,21 +157,25 @@ export function NoteSheet({
   }
 
   const onKeyDown = (e: React.KeyboardEvent) => {
-    // Power path: Ctrl/Cmd+Enter re-uses the last tag.
+    // Power path: Ctrl/Cmd+Enter saves without leaving the keyboard.
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault()
-      let last: NoteTag = 'Technique'
-      try {
-        const raw = localStorage.getItem(LAST_TAG_KEY)
-        if (raw && (NOTE_TAGS as readonly string[]).includes(raw)) last = raw as NoteTag
-      } catch {
-        /* ignore */
-      }
-      save(last)
+      save()
     }
   }
 
-  const ready = !!body.trim()
+  const phaseGroups = (() => {
+    const ordered = orderedCheckpoints(checkpoints)
+    const groups: { label: string; options: { value: string; label: string }[] }[] = []
+    for (const c of ordered) {
+      const label = `Phase ${c.phase}`
+      const last = groups[groups.length - 1]
+      const opt = { value: c.id, label: c.name }
+      if (last && last.label === label) last.options.push(opt)
+      else groups.push({ label, options: [opt] })
+    }
+    return groups
+  })()
 
   return (
     <Sheet
@@ -187,38 +205,39 @@ export function NoteSheet({
         )}
       </div>
 
-      <div className="tag-grid" aria-label="Save with tag">
-        {NOTE_TAGS.map((tag) => (
+      <div className="tag-grid" role="radiogroup" aria-label="Tag">
+        {NOTE_TAGS.map((t) => (
           <button
-            key={tag}
-            className={`tag-chip tag-${tag === 'Win' ? 'win' : 'std'}`}
-            disabled={!ready}
-            onClick={() => save(tag)}
+            key={t}
+            role="radio"
+            aria-checked={tag === t}
+            className={`tag-chip${t === 'Win' ? ' tag-win' : ''}${tag === t ? ' on' : ''}`}
+            onClick={() => setTag(tag === t ? null : t)}
           >
-            {tag}
+            {t}
           </button>
         ))}
       </div>
-      <p className="tag-hint">{ready ? 'Tap a tag to save' : 'Type or dictate, then tap a tag'}</p>
 
-      {checkpoints.some((c) => c.active) && (
-        <div className="field note-cp">
-          <label htmlFor="note-cp">Link checkpoint (optional)</label>
-          <select
+      {phaseGroups.length > 0 && (
+        <div className="note-cp">
+          <PickerField
             id="note-cp"
-            className="input"
+            label="Link checkpoint (optional)"
+            title="Link a checkpoint"
             value={cpLink}
-            onChange={(e) => setCpLink(e.target.value)}
-          >
-            <option value="">None</option>
-            {orderedCheckpoints(checkpoints).map((c) => (
-              <option key={c.id} value={c.id}>
-                P{c.phase} · {c.name}
-              </option>
-            ))}
-          </select>
+            groups={phaseGroups}
+            onChange={setCpLink}
+            noneLabel="None"
+          />
         </div>
       )}
+
+      <div className="sheet-actions note-save-row">
+        <button className="btn tall primary" disabled={!ready} onClick={save}>
+          {ready ? `Save — ${tag}` : !body.trim() ? 'Type or dictate first' : 'Pick a tag'}
+        </button>
+      </div>
     </Sheet>
   )
 }

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { INSTRUMENTS, positionName, type Instrument, type Player } from '../../db/drumline'
 import { useDrumline } from '../../state/useDrumline'
 import { Sheet } from '../Sheet'
+import { PickerField } from '../PickerSheet'
 
 export interface PlayerInput {
   firstName: string
@@ -91,21 +92,13 @@ export function PlayerFormSheet({
         </div>
         <p className="form-hint">Both optional — leave blank to label this player "{autoLabel}".</p>
 
-        <div className="field">
-          <label htmlFor="pf-inst">Instrument</label>
-          <select
-            id="pf-inst"
-            className="input"
-            value={instrument}
-            onChange={(e) => setInstrument(e.target.value as Instrument)}
-          >
-            {INSTRUMENTS.map((i) => (
-              <option key={i} value={i}>
-                {i}
-              </option>
-            ))}
-          </select>
-        </div>
+        <PickerField
+          id="pf-inst"
+          label="Instrument"
+          value={instrument}
+          groups={[{ options: INSTRUMENTS.map((i) => ({ value: i, label: i })) }]}
+          onChange={(v) => setInstrument(v as Instrument)}
+        />
 
         <div className="field">
           <label>Grade</label>

@@ -4,6 +4,7 @@ import { getRecordingBlob, playerName, type RecordingMeta } from '../db/drumline
 import { fmtDayYear, useDrumline } from '../state/useDrumline'
 import { useToast } from '../state/useToast'
 import { Sheet } from '../components/Sheet'
+import { PickerField } from '../components/PickerSheet'
 import { ConfirmModal } from '../components/Modal'
 import { Close, Play, RecDot, Trash, Upload } from '../components/icons'
 
@@ -435,22 +436,23 @@ function SaveRecordingSheet({
             autoFocus
           />
         </div>
-        <div className="field">
-          <label htmlFor="rec-player">Player (optional)</label>
-          <select
-            id="rec-player"
-            className="input"
-            value={playerId}
-            onChange={(e) => setPlayerId(e.target.value)}
-          >
-            <option value="">Whole section</option>
-            {active.map((p) => (
-              <option key={p.id} value={p.id}>
-                {playerName(p)} — {p.instrument}
-              </option>
-            ))}
-          </select>
-        </div>
+        <PickerField
+          id="rec-player"
+          label="Player (optional)"
+          title="Who is this of?"
+          value={playerId}
+          groups={[
+            {
+              options: active.map((p) => ({
+                value: p.id,
+                label: playerName(p),
+                meta: p.instrument,
+              })),
+            },
+          ]}
+          onChange={setPlayerId}
+          noneLabel="Whole section"
+        />
         <label className="switch">
           <input
             type="checkbox"

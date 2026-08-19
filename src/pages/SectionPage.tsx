@@ -295,13 +295,21 @@ function SetStatusSheet({
   )
 }
 
-/** Unresolved notes across the whole line, grouped by tag. */
+/**
+ * Every note in one place: unresolved grouped by tag, with the resolved
+ * history one tap away. This is where section-wide notes live after capture.
+ */
 function OpenNotes() {
   const notes = useDrumline((s) => s.notes)
   const players = useDrumline((s) => s.players)
   const setNoteResolved = useDrumline((s) => s.setNoteResolved)
+  const [showResolved, setShowResolved] = useState(false)
 
   const open = useMemo(() => notes.filter((n) => !n.resolved), [notes])
+  const resolved = useMemo(
+    () => notes.filter((n) => n.resolved).sort((a, b) => b.createdAt - a.createdAt),
+    [notes],
+  )
   const byId = useMemo(() => new Map(players.map((p) => [p.id, p])), [players])
 
   const groups = useMemo(
@@ -313,9 +321,20 @@ function OpenNotes() {
     [open],
   )
 
+  const who = (n: { playerId: string | null }) => {
+    const p = n.playerId ? byId.get(n.playerId) : null
+    return p ? (
+      <Link to={`/player/${p.id}`} className="note-player">
+        {playerName(p)}
+      </Link>
+    ) : (
+      <span className="note-player section">Section</span>
+    )
+  }
+
   return (
     <section className="open-notes">
-      <h4 className="section-label">Open notes</h4>
+      <h4 className="section-label">Notes</h4>
       {groups.length === 0 && <p className="quiet-empty">Nothing open. Clean slate.</p>}
       {groups.map((g) => (
         <div key={g.tag} className="open-group">
@@ -323,34 +342,52 @@ function OpenNotes() {
             {g.tag} · {g.items.length}
           </span>
           <div className="note-list">
-            {g.items.map((n) => {
-              const p = n.playerId ? byId.get(n.playerId) : null
-              return (
-                <article key={n.id} className="note-card">
-                  <div className="note-top">
-                    {p ? (
-                      <Link to={`/player/${p.id}`} className="note-player">
-                        {playerName(p)}
-                      </Link>
-                    ) : (
-                      <span className="note-player section">Section</span>
-                    )}
-                    <button
-                      className="btn icon xs resolve-btn"
-                      onClick={() => setNoteResolved(n.id, true)}
-                      aria-label="Resolve note"
-                      title="Resolve"
-                    >
-                      <Check size={14} />
-                    </button>
-                  </div>
-                  <p className="note-body">{n.body}</p>
-                </article>
-              )
-            })}
+            {g.items.map((n) => (
+              <article key={n.id} className="note-card">
+                <div className="note-top">
+                  {who(n)}
+                  <button
+                    className="btn icon xs resolve-btn"
+                    onClick={() => setNoteResolved(n.id, true)}
+                    aria-label="Resolve note"
+                    title="Resolve"
+                  >
+                    <Check size={14} />
+                  </button>
+                </div>
+                <p className="note-body">{n.body}</p>
+              </article>
+            ))}
           </div>
         </div>
       ))}
+
+      {resolved.length > 0 && (
+        <button className="btn ghost sm" onClick={() => setShowResolved((v) => !v)}>
+          {showResolved ? 'Hide resolved' : `Resolved (${resolved.length})`}
+        </button>
+      )}
+      {showResolved && (
+        <div className="note-list resolved-list">
+          {resolved.map((n) => (
+            <article key={n.id} className="note-card resolved">
+              <div className="note-top">
+                {who(n)}
+                <span className={`note-tag tag-${n.tag === 'Win' ? 'win' : 'std'}`}>{n.tag}</span>
+                <button
+                  className="btn icon xs resolve-btn on"
+                  onClick={() => setNoteResolved(n.id, false)}
+                  aria-label="Reopen note"
+                  title="Reopen"
+                >
+                  <Check size={14} />
+                </button>
+              </div>
+              <p className="note-body">{n.body}</p>
+            </article>
+          ))}
+        </div>
+      )}
     </section>
   )
 }

@@ -9,6 +9,9 @@ interface SheetProps {
   meta?: ReactNode
 }
 
+/** Sheets can stack (a picker opens over the note sheet); Escape only closes the top one. */
+const sheetStack: symbol[] = []
+
 /**
  * Bottom sheet — the tracker's primary capture surface. Anchored to the bottom
  * so every control is in thumb reach; on iOS the fixed positioning rides up
@@ -16,11 +19,17 @@ interface SheetProps {
  */
 export function Sheet({ title, onClose, children, meta }: SheetProps) {
   useEffect(() => {
+    const me = Symbol('sheet')
+    sheetStack.push(me)
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape' && sheetStack[sheetStack.length - 1] === me) onClose()
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => {
+      const i = sheetStack.indexOf(me)
+      if (i !== -1) sheetStack.splice(i, 1)
+      window.removeEventListener('keydown', onKey)
+    }
   }, [onClose])
 
   return (
