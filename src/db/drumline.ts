@@ -68,7 +68,29 @@ export interface Player {
   createdAt: number
 }
 
-export const playerName = (p: Player) => `${p.firstName} ${p.lastInitial}.`
+/** "Ty L." with an initial, or the bare label ("Snare 1") for no-name rosters. */
+export const playerName = (p: Player) =>
+  p.lastInitial ? `${p.firstName} ${p.lastInitial}.` : p.firstName
+
+/**
+ * Auto-label for a player added without a name: "Snare 1", "Tenors 2",
+ * "Bass 3" — the next label that isn't already on the roster. Lets a line be
+ * built entirely from positions, no student names stored at all.
+ */
+export function positionName(players: Player[], instrument: Instrument): string {
+  const taken = new Set(players.map((p) => p.firstName.trim().toLowerCase()))
+  if (instrument.startsWith('Bass')) {
+    if (!taken.has(instrument.toLowerCase())) return instrument
+    for (let n = 2; ; n++) {
+      const name = `${instrument} (${n})`
+      if (!taken.has(name.toLowerCase())) return name
+    }
+  }
+  for (let n = 1; ; n++) {
+    const name = `${instrument} ${n}`
+    if (!taken.has(name.toLowerCase())) return name
+  }
+}
 
 export interface Checkpoint {
   id: string

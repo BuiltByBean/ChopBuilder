@@ -78,7 +78,7 @@ export function SectionPage() {
               {cols.map((p) => (
                 <th key={p.id} className="hm-col">
                   <Link to={`/player/${p.id}`} className="hm-player">
-                    {p.firstName.slice(0, 7)} {p.lastInitial}
+                    {p.firstName.slice(0, 9)} {p.lastInitial}
                   </Link>
                 </th>
               ))}

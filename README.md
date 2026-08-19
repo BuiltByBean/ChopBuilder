@@ -39,9 +39,11 @@ before the next rep. Logging a note about a player takes under 5 seconds and 3 t
 - **Backup** — manual JSON export/import (data-only, or full with recording audio).
   That export is the only way tracker data leaves the device.
 
-Privacy stance: players are stored as first name + last initial only. No photos, no
-contact info, no analytics, no third-party services. Notes are coaching observations —
-technique, timing, effort, attendance, wins.
+Privacy stance: players are stored as first name + last initial at most — or with no
+names at all: leave the name blank (or use Roster → Build line) and players are plain
+position labels like "Snare 1" and "Bass 2". No photos, no contact info, no analytics,
+no third-party services. Notes are coaching observations — technique, timing, effort,
+attendance, wins.
 
 ## Run it
 

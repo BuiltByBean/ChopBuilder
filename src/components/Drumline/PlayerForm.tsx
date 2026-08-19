@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { INSTRUMENTS, type Instrument, type Player } from '../../db/drumline'
+import { INSTRUMENTS, positionName, type Instrument, type Player } from '../../db/drumline'
+import { useDrumline } from '../../state/useDrumline'
 import { Sheet } from '../Sheet'
 
 export interface PlayerInput {
@@ -15,8 +16,9 @@ export interface PlayerInput {
 const GRADES = [9, 10, 11, 12] as const
 
 /**
- * Add/edit a player. Deliberately only first name + last initial — the app
- * holds notes about minors and stores nothing more identifying than that.
+ * Add/edit a player. Names are optional and deliberately minimal — first name
+ * + last initial at most. Left blank, the player is auto-labelled by position
+ * ("Snare 1", "Bass 2"), so a line can be run with no student names stored.
  */
 export function PlayerFormSheet({
   title,
@@ -29,6 +31,7 @@ export function PlayerFormSheet({
   onSave: (input: PlayerInput) => void
   onClose: () => void
 }) {
+  const players = useDrumline((s) => s.players)
   const [firstName, setFirstName] = useState(initial?.firstName ?? '')
   const [lastInitial, setLastInitial] = useState(initial?.lastInitial ?? '')
   const [instrument, setInstrument] = useState<Instrument>(initial?.instrument ?? 'Snare')
@@ -37,7 +40,9 @@ export function PlayerFormSheet({
   const [sl, setSl] = useState(initial?.isSectionLeader ?? false)
   const [active, setActive] = useState(initial?.active ?? true)
 
-  const ready = firstName.trim().length > 0 && lastInitial.trim().length > 0
+  // What a blank name becomes; when editing, this player's own name isn't "taken".
+  const others = initial ? players.filter((p) => p.id !== initial.id) : players
+  const autoLabel = positionName(others, instrument)
 
   return (
     <Sheet title={title} onClose={onClose}>
@@ -45,10 +50,10 @@ export function PlayerFormSheet({
         className="stack"
         onSubmit={(e) => {
           e.preventDefault()
-          if (!ready) return
           const y = Number(years)
+          const name = firstName.trim() || autoLabel
           onSave({
-            firstName: firstName.trim(),
+            firstName: name,
             lastInitial: lastInitial.trim().slice(0, 1).toUpperCase(),
             instrument,
             gradeLevel: grade,
@@ -60,18 +65,19 @@ export function PlayerFormSheet({
       >
         <div className="form-row">
           <div className="field grow">
-            <label htmlFor="pf-first">First name</label>
+            <label htmlFor="pf-first">Name or label</label>
             <input
               id="pf-first"
               className="input"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
+              placeholder={autoLabel}
               autoFocus={!initial}
               autoComplete="off"
             />
           </div>
           <div className="field initial-field">
-            <label htmlFor="pf-last">Last initial</label>
+            <label htmlFor="pf-last">Initial</label>
             <input
               id="pf-last"
               className="input"
@@ -79,9 +85,11 @@ export function PlayerFormSheet({
               maxLength={1}
               onChange={(e) => setLastInitial(e.target.value)}
               autoComplete="off"
+              placeholder="—"
             />
           </div>
         </div>
+        <p className="form-hint">Both optional — leave blank to label this player "{autoLabel}".</p>
 
         <div className="field">
           <label htmlFor="pf-inst">Instrument</label>
@@ -148,7 +156,7 @@ export function PlayerFormSheet({
           <button type="button" className="btn tall ghost" onClick={onClose}>
             Cancel
           </button>
-          <button type="submit" className="btn tall primary" disabled={!ready}>
+          <button type="submit" className="btn tall primary">
             Save
           </button>
         </div>
