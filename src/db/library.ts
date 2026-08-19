@@ -1,5 +1,15 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
 import type { Exercise, PREntry } from './records'
+import type {
+  Checkpoint,
+  Note,
+  Player,
+  PlayerCheckpoint,
+  RecordingBlob,
+  RecordingMeta,
+  Session,
+  StatusChange,
+} from './drumline'
 
 export type FileKind = 'pdf' | 'image' | 'audio' | 'other'
 
@@ -48,6 +58,38 @@ interface ChopDB extends DBSchema {
     value: PREntry
     indexes: { byExercise: string }
   }
+  dlPlayers: {
+    key: string
+    value: Player
+  }
+  dlCheckpoints: {
+    key: string
+    value: Checkpoint
+  }
+  dlPlayerCheckpoints: {
+    key: string
+    value: PlayerCheckpoint
+  }
+  dlHistory: {
+    key: string
+    value: StatusChange
+  }
+  dlNotes: {
+    key: string
+    value: Note
+  }
+  dlSessions: {
+    key: string
+    value: Session
+  }
+  dlRecordings: {
+    key: string
+    value: RecordingMeta
+  }
+  dlRecordingBlobs: {
+    key: string
+    value: RecordingBlob
+  }
 }
 
 let dbp: Promise<IDBPDatabase<ChopDB>> | null = null
@@ -55,7 +97,7 @@ let dbp: Promise<IDBPDatabase<ChopDB>> | null = null
 /** Single shared connection — records.ts uses it too. */
 export const db = () => {
   if (!dbp) {
-    dbp = openDB<ChopDB>('chopbuilder', 2, {
+    dbp = openDB<ChopDB>('chopbuilder', 3, {
       upgrade(d, oldVersion) {
         if (oldVersion < 1) {
           const folders = d.createObjectStore('folders', { keyPath: 'id' })
@@ -68,6 +110,18 @@ export const db = () => {
           d.createObjectStore('exercises', { keyPath: 'id' })
           const prs = d.createObjectStore('prs', { keyPath: 'id' })
           prs.createIndex('byExercise', 'exerciseId')
+        }
+        if (oldVersion < 3) {
+          // Drumline progress tracker. Checkpoints are seeded on first load
+          // (see drumline.ts) rather than here, keeping the upgrade pure DDL.
+          d.createObjectStore('dlPlayers', { keyPath: 'id' })
+          d.createObjectStore('dlCheckpoints', { keyPath: 'id' })
+          d.createObjectStore('dlPlayerCheckpoints', { keyPath: 'id' })
+          d.createObjectStore('dlHistory', { keyPath: 'id' })
+          d.createObjectStore('dlNotes', { keyPath: 'id' })
+          d.createObjectStore('dlSessions', { keyPath: 'id' })
+          d.createObjectStore('dlRecordings', { keyPath: 'id' })
+          d.createObjectStore('dlRecordingBlobs', { keyPath: 'id' })
         }
       },
     })

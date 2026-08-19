@@ -1,10 +1,47 @@
 # ChopBuilder
 
-A precision metronome (20–300 BPM) with a sheet-music library you can practise alongside.
+A drumline progress tracker and a precision metronome (20–300 BPM) with a sheet-music
+library — one offline-first app for running a battery and building your own chops.
 
-Everything runs in the browser. Your music is stored locally on your device — nothing
-is uploaded to a server. The built site is a PWA: it can be installed like an app, and
-after a couple of visits it loads fully offline.
+Everything runs in the browser. All data is stored locally on your device — nothing
+is uploaded to a server, ever. The built site is a PWA: it can be installed like an app,
+and after a couple of visits it loads fully offline.
+
+## The drumline tracker
+
+Built for a battery tech standing in a parking lot, holding sticks, with 25 seconds
+before the next rep. Logging a note about a player takes under 5 seconds and 3 taps.
+
+- **Rehearsal Mode** (the landing screen) — player tiles grouped by instrument, sorted
+  by who needs attention. Tap a tile → a sheet opens with the text field already
+  focused, a dictation mic, and tag chips; **tapping a tag saves and closes the sheet**.
+  Long-press a tile to jump to that player's checkpoints. A persistent Section-note
+  button covers the whole line, and a pinned tempo field stamps every note and status
+  change with the BPM you were running (one tap pulls it from the live metronome).
+- **Checkpoints** — 35 seeded technique standards across six phases (The Stroke → Time
+  and Space → Two Heights → Diddles/Rolls/Flams → Marching Integration → Ensemble),
+  with phase gates marked ★. Add, rename, reorder, and retire them in More →
+  Checkpoints. Tapping a status pill cycles Not Started → Working → Close → Passed
+  (with a "clean at X BPM" prompt on Passed). Every change appends to a season log —
+  status history is never destroyed.
+- **Section View** — the planning screen: a checkpoint × player heatmap with a sticky
+  first column, gate status with who's blocking, weakest checkpoints ranked, and open
+  notes grouped by tag.
+- **Sessions** — rehearsal log. New sessions pre-fill focus from the line's lowest
+  incomplete checkpoint and carry the previous session's "next time" forward. Notes
+  taken that day attach automatically.
+- **Recordings** — record or import reference audio, mark baselines, and play any two
+  back to back (the "week 1 vs now" demo for the kids).
+- **No confirmations on capture** — optimistic writes with an Undo toast.
+- **Sunlight mode** — a high-contrast light theme for reading in direct sun, one tap
+  from the rehearsal bar. Dark theme is the default.
+- **App lock** — optional PIN on launch (More → App lock).
+- **Backup** — manual JSON export/import (data-only, or full with recording audio).
+  That export is the only way tracker data leaves the device.
+
+Privacy stance: players are stored as first name + last initial only. No photos, no
+contact info, no analytics, no third-party services. Notes are coaching observations —
+technique, timing, effort, attendance, wins.
 
 ## Run it
 
@@ -26,7 +63,8 @@ GitHub Pages, Netlify, or any host without extra redirect rules.
 
 ## The metronome
 
-The landing page. Timing comes from the Web Audio clock rather than JavaScript timers:
+Lives under the Chops tab (with the library and personal records). Timing comes from
+the Web Audio clock rather than JavaScript timers:
 a scheduler wakes every 25 ms and queues each click at an exact time slightly in the
 future, so the pulse stays sample-accurate and doesn't drift, even while pages render.
 
@@ -96,11 +134,17 @@ old record. Records live in the same on-device database as the library.
 ```
 src/
   audio/metronome.ts        Web Audio scheduler and click synthesis
-  db/library.ts             IndexedDB access for folders and files
-  state/                    React bindings for the engine and the library
+  db/library.ts             IndexedDB schema + folders/files access
+  db/drumline.ts            Tracker model: players, checkpoints, notes, sessions,
+                            recordings, seed data, JSON backup
+  state/                    React bindings: metronome, library, records, tracker,
+                            prefs (sunlight mode, tempo stamp, PIN), toasts
   components/
     Metronome/              Full panel, docked panel, beat pads
     Library/                Folder tree
     Viewer/                 pdf.js setup and the multi-page renderer
-  pages/                    Metronome, Library, Practice
+    Drumline/               Note sheet, status chips, player form
+  pages/                    Rehearsal, Player, Section, Sessions, Recordings,
+                            More (roster/checkpoints/backup), Metronome, Library,
+                            Practice, Progress
 ```

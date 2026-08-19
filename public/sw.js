@@ -7,7 +7,7 @@
  * pdf.js's standard fonts and cmaps are fetched on demand and get cached the
  * first time a score needs them.
  */
-const CACHE = 'chopbuilder-v1'
+const CACHE = 'chopbuilder-v2'
 
 self.addEventListener('install', (e) => {
   e.waitUntil(

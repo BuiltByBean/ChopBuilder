@@ -183,3 +183,91 @@ export const Expand = svg(
 export const Compress = svg(
   <path d="M4 9h5V4M20 9h-5V4M4 15h5v5M20 15h-5v5" />,
 )
+
+// --- drumline tracker ---------------------------------------------------------
+
+export const Sticks = svg(
+  <>
+    <path d="M4.5 4.5 17 17" />
+    <path d="M19.5 4.5 7 17" />
+    <circle cx="18.6" cy="18.6" r="1.9" />
+    <circle cx="5.4" cy="18.6" r="1.9" />
+  </>,
+)
+export const HeatGrid = svg(
+  <>
+    <rect x="3.5" y="3.5" width="7.2" height="7.2" rx="1.2" />
+    <rect x="13.3" y="3.5" width="7.2" height="7.2" rx="1.2" />
+    <rect x="3.5" y="13.3" width="7.2" height="7.2" rx="1.2" />
+    <rect x="13.3" y="13.3" width="7.2" height="7.2" rx="1.2" />
+  </>,
+)
+export const Calendar = svg(
+  <>
+    <rect x="3.5" y="5" width="17" height="15.5" rx="2" />
+    <path d="M3.5 9.5h17M8 3v4M16 3v4" />
+  </>,
+)
+export const MoreH = svg(
+  <>
+    <circle cx="5.5" cy="12" r="1.4" fill="currentColor" />
+    <circle cx="12" cy="12" r="1.4" fill="currentColor" />
+    <circle cx="18.5" cy="12" r="1.4" fill="currentColor" />
+  </>,
+)
+export const Mic = svg(
+  <>
+    <rect x="9" y="3" width="6" height="11" rx="3" />
+    <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M9 21h6" />
+  </>,
+)
+export const Sun = svg(
+  <>
+    <circle cx="12" cy="12" r="4.2" />
+    <path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5 5l1.7 1.7M17.3 17.3 19 19M19 5l-1.7 1.7M6.7 17.3 5 19" />
+  </>,
+)
+export const Lock = svg(
+  <>
+    <rect x="5" y="10.5" width="14" height="10" rx="2" />
+    <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" />
+  </>,
+)
+export const Star = svg(
+  <path d="m12 3.5 2.5 5.2 5.7.7-4.2 3.9 1.1 5.6L12 16.2l-5.1 2.7 1.1-5.6-4.2-3.9 5.7-.7L12 3.5Z" />,
+)
+export const Check = svg(<path d="m4.5 12.5 5 5L19.5 7" />)
+export const RecDot = ({ size = 18, className }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" className={className} aria-hidden="true">
+    <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="1.9" />
+    <circle cx="12" cy="12" r="4.4" fill="currentColor" />
+  </svg>
+)
+export const Download = svg(
+  <>
+    <path d="M4 15.5v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+    <path d="M12 3.5v12M7.5 11 12 15.5 16.5 11" />
+  </>,
+)
+export const ArrowUp = svg(<path d="M12 19V5M6 11l6-6 6 6" />)
+export const ArrowDown = svg(<path d="M12 5v14M6 13l6 6 6-6" />)
+export const UserPlus = svg(
+  <>
+    <circle cx="10" cy="8" r="3.6" />
+    <path d="M3.5 20a6.5 6.5 0 0 1 13 0" />
+    <path d="M18.5 8.5v5M16 11h5" />
+  </>,
+)
+export const Users = svg(
+  <>
+    <circle cx="9" cy="8.5" r="3.4" />
+    <path d="M3 19.5a6 6 0 0 1 12 0" />
+    <path d="M15.5 5.6a3.4 3.4 0 0 1 0 5.8M17.5 13.9a6 6 0 0 1 3.5 5.6" />
+  </>,
+)
+export const NoteIcon = svg(
+  <>
+    <path d="M13.5 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9l-5.5-5.5Z" />
+    <path d="M13.5 3.5V9H19M8.5 13.5h7M8.5 17h4.5" />
+  </>,
+)

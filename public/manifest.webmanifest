@@ -1,7 +1,7 @@
 {
   "name": "ChopBuilder",
   "short_name": "ChopBuilder",
-  "description": "Precision metronome up to 300 BPM with a sheet-music library you practise alongside.",
+  "description": "Drumline progress tracker with rehearsal notes and a section heatmap, plus a precision metronome up to 300 BPM and a sheet-music library. Offline-first; all data stays on the device.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
