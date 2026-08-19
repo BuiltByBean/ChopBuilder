@@ -1751,11 +1751,60 @@ html[data-mode='outdoor'] .beat.lit[data-state='accent'] {
   animation: none;
 }
 
-/* Safe areas: the header owns the notch, the tab bar owns the home bar. */
+/* iOS app feel: no tap flash, no rotated-text inflation, no double-tap zoom
+   on controls. Scrub/press targets keep their own touch-action overrides. */
+html {
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  -webkit-tap-highlight-color: transparent;
+}
+button,
+a,
+label.switch {
+  touch-action: manipulation;
+}
+.page {
+  scrollbar-gutter: stable;
+}
+
+/* Safe areas: the header owns the notch, the tab bar owns the home bar, and
+   both respect the landscape sensor housing. */
 .nav {
   height: auto;
   min-height: var(--nav-h);
   padding-top: env(safe-area-inset-top, 0px);
+  padding-left: max(18px, env(safe-area-inset-left, 0px));
+  padding-right: max(18px, env(safe-area-inset-right, 0px));
+}
+
+/* Sunlight mode + black-translucent status bar: paint the notch strip dark so
+   the white iOS status text stays readable over the light header. */
+html[data-mode='outdoor'] .nav {
+  padding-top: 0;
+  border-top: 0 solid #0a0b0d;
+  border-top-width: env(safe-area-inset-top, 0px);
+}
+
+/* One-time iOS "Add to Home Screen" pointer — a flex row above the tab bar,
+   never position:fixed (LM-3). */
+.install-hint {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px 9px 16px;
+  background: var(--panel-2);
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+.install-hint span {
+  flex: 1;
+  min-width: 0;
+}
+.install-hint b {
+  color: var(--text);
 }
 
 .top-nav {
@@ -3365,7 +3414,8 @@ html[data-mode='outdoor'] .hm-cell.st-bg-not_started {
     gap: 2px;
     border-top: 1px solid var(--line);
     background: var(--bg-2);
-    padding: 4px 6px calc(4px + env(safe-area-inset-bottom, 0px));
+    padding: 4px max(6px, env(safe-area-inset-right, 0px)) calc(4px + env(safe-area-inset-bottom, 0px))
+      max(6px, env(safe-area-inset-left, 0px));
     z-index: 40;
   }
   .tab {

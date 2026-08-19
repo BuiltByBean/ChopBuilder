@@ -2,15 +2,68 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
     <meta name="theme-color" content="#0a0b0d" />
     <title>ChopBuilder — Drumline Tracker &amp; Metronome</title>
     <meta name="description" content="Offline-first drumline progress tracker — player checkpoints, rehearsal notes, section heatmap — plus a precision metronome up to 300 BPM and a sheet-music library." />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="./icon-192.png" />
+
+    <!-- iOS standalone / Add to Home Screen. Without the apple-touch-icon
+         link, iOS uses a page screenshot as the home-screen icon. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="ChopBuilder" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <link rel="manifest" href="./manifest.webmanifest" />
+
+    <!-- Critical splash curtain: a cold standalone launch paints this before
+         any CSS/JS arrives, so the app never flashes white. Repeat loads in
+         the same session skip it via the splash-seen class set below. -->
+    <style>
+      html {
+        background: #0a0b0d;
+      }
+      #splash {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: grid;
+        place-items: center;
+        background: #0a0b0d;
+        transition: opacity 0.18s ease-out;
+      }
+      #splash svg {
+        width: 64px;
+        height: 64px;
+        color: #c9954a;
+      }
+      html.splash-seen #splash {
+        display: none;
+      }
+      html.app-ready #splash {
+        opacity: 0;
+        pointer-events: none;
+      }
+    </style>
+    <script>
+      try {
+        if (sessionStorage.getItem('chopbuilder.splash'))
+          document.documentElement.classList.add('splash-seen')
+      } catch (e) {}
+    </script>
   </head>
   <body>
+    <div id="splash" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9.2 3.5h5.6l4.2 17H5L9.2 3.5Z" />
+        <path d="M6.6 14.5h10.8" />
+        <path d="M12 19.5 17.5 7" />
+      </svg>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

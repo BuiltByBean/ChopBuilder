@@ -7,14 +7,25 @@
  * pdf.js's standard fonts and cmaps are fetched on demand and get cached the
  * first time a score needs them.
  */
-const CACHE = 'chopbuilder-v2'
+const CACHE = 'chopbuilder-v3'
+
+// Seed the shell plus install-surface files (manifest, icons) so a
+// hard-offline launch — and the home-screen icon — always resolve.
+const SEED = [
+  './',
+  './index.html',
+  './manifest.webmanifest',
+  './icon.svg',
+  './icon-192.png',
+  './icon-512.png',
+  './apple-touch-icon.png',
+]
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches
       .open(CACHE)
-      // Seed the shell so a hard-offline first navigation still resolves.
-      .then((c) => Promise.allSettled([c.add('./'), c.add('./index.html')]))
+      .then((c) => Promise.allSettled(SEED.map((p) => c.add(p))))
       .then(() => self.skipWaiting()),
   )
 })

@@ -48,6 +48,10 @@ function applyOutdoor(on: boolean) {
   const el = document.documentElement
   if (on) el.dataset.mode = 'outdoor'
   else delete el.dataset.mode
+  // Keep the browser/OS chrome tint in step with the app's ground.
+  document
+    .querySelector('meta[name="theme-color"]')
+    ?.setAttribute('content', on ? '#f2f3f1' : '#0a0b0d')
 }
 
 async function hashPin(pin: string, salt: string): Promise<string> {

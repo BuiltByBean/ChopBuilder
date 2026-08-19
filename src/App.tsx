@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { MetronomePage } from './pages/MetronomePage'
 import { LibraryPage } from './pages/LibraryPage'
@@ -22,7 +22,7 @@ import { useDrumline } from './state/useDrumline'
 import { usePrefs } from './state/usePrefs'
 import { useToast } from './state/useToast'
 import { initSync } from './sync/sync'
-import { Calendar, HeatGrid, Metro, MoreH, Pause, Play, Sticks } from './components/icons'
+import { Calendar, Close, HeatGrid, Metro, MoreH, Pause, Play, Sticks } from './components/icons'
 
 const isChopsPath = (p: string) =>
   p.startsWith('/metronome') || p.startsWith('/library') || p.startsWith('/progress') || p.startsWith('/practice')
@@ -102,6 +102,7 @@ export default function App() {
         </Routes>
       </main>
 
+      <InstallHint />
       <TabBar pathname={pathname} />
       <ToastHost />
       <GlobalKeys />
@@ -138,6 +139,60 @@ function TabBar({ pathname }: { pathname: string }) {
         </Link>
       ))}
     </nav>
+  )
+}
+
+const HINT_KEY = 'chopbuilder:installHintDismissed'
+
+/**
+ * iOS has no install prompt of its own — Safari users get a one-time,
+ * dismissible pointer at Share → Add to Home Screen. Standalone launches also
+ * stamp a `standalone` class on <html> for any CSS that wants it.
+ */
+function InstallHint() {
+  const [show, setShow] = useState(false)
+
+  useEffect(() => {
+    const standalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (navigator as unknown as { standalone?: boolean }).standalone === true
+    if (standalone) {
+      document.documentElement.classList.add('standalone')
+      return
+    }
+    const isIOS =
+      /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    let dismissed = false
+    try {
+      dismissed = !!localStorage.getItem(HINT_KEY)
+    } catch {
+      /* ignore */
+    }
+    if (isIOS && !dismissed) setShow(true)
+  }, [])
+
+  if (!show) return null
+  return (
+    <div className="install-hint" role="note">
+      <span>
+        Install this app: tap <b>Share</b> → <b>Add to Home Screen</b>
+      </span>
+      <button
+        className="btn icon xs ghost"
+        aria-label="Dismiss install hint"
+        onClick={() => {
+          try {
+            localStorage.setItem(HINT_KEY, '1')
+          } catch {
+            /* ignore */
+          }
+          setShow(false)
+        }}
+      >
+        <Close size={14} />
+      </button>
+    </div>
   )
 }
 

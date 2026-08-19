@@ -275,7 +275,8 @@ def sync():
 
 # ---------------- static app (Vite build) ----------------
 _TOP_ALLOWED = {"index.html", "manifest.webmanifest", "sw.js",
-                "icon.svg", "icon-192.png", "icon-512.png"}
+                "icon.svg", "icon-192.png", "icon-512.png",
+                "apple-touch-icon.png"}
 _NO_CACHE = {"index.html", "sw.js", "manifest.webmanifest"}
 
 
