@@ -3,10 +3,11 @@ import { playerName, type Session } from '../db/drumline'
 import {
   fmtDayYear,
   fmtTime,
-  localNoon,
+  fromDateInput,
   notesForSession,
   orderedCheckpoints,
   statusOf,
+  toDateInput,
   useDrumline,
 } from '../state/useDrumline'
 import { useToast } from '../state/useToast'
@@ -144,18 +145,6 @@ function SessionDetail({ session, onEdit }: { session: Session; onEdit: () => vo
       )}
     </div>
   )
-}
-
-function toDateInput(ts: number): string {
-  const d = new Date(ts)
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${d.getFullYear()}-${m}-${day}`
-}
-
-function fromDateInput(v: string): number {
-  const [y, m, d] = v.split('-').map(Number)
-  return localNoon(new Date(y, (m ?? 1) - 1, d ?? 1))
 }
 
 function SessionFormSheet({ initial, onClose }: { initial?: Session; onClose: () => void }) {

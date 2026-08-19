@@ -57,6 +57,8 @@ interface DrumlineState {
     tag: NoteTag
     checkpointId?: string | null
     bpm?: number | null
+    /** Backdate for notes typed up after the rehearsal; defaults to now. */
+    createdAt?: number
   }) => Note
   removeNote: (id: string) => void
   setNoteResolved: (id: string, resolved: boolean) => void
@@ -175,7 +177,7 @@ export const useDrumline = create<DrumlineState>((set, get) => ({
       tag: input.tag,
       checkpointId: input.checkpointId ?? null,
       bpm: input.bpm ?? null,
-      createdAt: Date.now(),
+      createdAt: input.createdAt ?? Date.now(),
       resolved: false,
       resolvedAt: null,
     }
@@ -404,6 +406,20 @@ export function weakestCheckpoints(
 /** Local noon for a calendar day — immune to DST/timezone edge math. */
 export function localNoon(d: Date): number {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12).getTime()
+}
+
+/** ts → the yyyy-mm-dd form a native date input wants. */
+export function toDateInput(ts: number): string {
+  const d = new Date(ts)
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${m}-${day}`
+}
+
+/** yyyy-mm-dd → local-noon timestamp of that day. */
+export function fromDateInput(v: string): number {
+  const [y, m, d] = v.split('-').map(Number)
+  return localNoon(new Date(y, (m ?? 1) - 1, d ?? 1))
 }
 
 export function sameLocalDay(a: number, b: number): boolean {

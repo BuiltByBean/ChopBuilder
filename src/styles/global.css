@@ -2155,6 +2155,18 @@ html[data-mode='outdoor'] .beat.lit[data-state='accent'] {
 .note-save-row {
   margin-top: 14px;
 }
+.date-field {
+  flex: none;
+  width: 168px;
+}
+.date-field .input {
+  min-height: 48px;
+}
+@media (max-width: 480px) {
+  .date-field {
+    flex: 1 1 100%;
+  }
+}
 
 /* Themed select replacement */
 .picker-btn {

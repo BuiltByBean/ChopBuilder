@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { NOTE_TAGS, playerName, type NoteTag } from '../../db/drumline'
-import { orderedCheckpoints, useDrumline } from '../../state/useDrumline'
+import {
+  fmtDay,
+  fromDateInput,
+  orderedCheckpoints,
+  sameLocalDay,
+  toDateInput,
+  useDrumline,
+} from '../../state/useDrumline'
 import { usePrefs } from '../../state/usePrefs'
 import { useToast } from '../../state/useToast'
 import { Sheet } from '../Sheet'
@@ -120,6 +127,8 @@ export function NoteSheet({
   const [body, setBody] = useState('')
   const [tag, setTag] = useState<NoteTag | null>(readLastTag)
   const [cpLink, setCpLink] = useState(defaultCheckpointId ?? '')
+  // For notes typed up after the fact — defaults to today, costs zero taps live.
+  const [noteDate, setNoteDate] = useState(() => toDateInput(Date.now()))
   const areaRef = useRef<HTMLTextAreaElement>(null)
 
   const player = playerId ? players.find((p) => p.id === playerId) : null
@@ -145,14 +154,22 @@ export function NoteSheet({
     } catch {
       /* ignore */
     }
+    // A changed date stamps the note at that day's local noon, so it sorts and
+    // attaches to that day's session instead of "whenever I typed it up".
+    const picked = noteDate ? fromDateInput(noteDate) : Date.now()
+    const backdated = !sameLocalDay(picked, Date.now())
     const note = addNote({
       playerId,
       body: trimmed,
       tag,
       checkpointId: cpLink || null,
       bpm: rehearsalBpm,
+      createdAt: backdated ? picked : Date.now(),
     })
-    show(`Saved — ${tag}`, { label: 'Undo', fn: () => removeNote(note.id) })
+    show(backdated ? `Saved to ${fmtDay(picked)} — ${tag}` : `Saved — ${tag}`, {
+      label: 'Undo',
+      fn: () => removeNote(note.id),
+    })
     onClose()
   }
 
@@ -219,19 +236,32 @@ export function NoteSheet({
         ))}
       </div>
 
-      {phaseGroups.length > 0 && (
-        <div className="note-cp">
-          <PickerField
-            id="note-cp"
-            label="Link checkpoint (optional)"
-            title="Link a checkpoint"
-            value={cpLink}
-            groups={phaseGroups}
-            onChange={setCpLink}
-            noneLabel="None"
+      <div className="form-row note-cp">
+        {phaseGroups.length > 0 && (
+          <div className="grow">
+            <PickerField
+              id="note-cp"
+              label="Link checkpoint (optional)"
+              title="Link a checkpoint"
+              value={cpLink}
+              groups={phaseGroups}
+              onChange={setCpLink}
+              noneLabel="None"
+            />
+          </div>
+        )}
+        <div className="field date-field">
+          <label htmlFor="note-date">Rehearsal day</label>
+          <input
+            id="note-date"
+            className="input"
+            type="date"
+            value={noteDate}
+            max={toDateInput(Date.now())}
+            onChange={(e) => setNoteDate(e.target.value)}
           />
         </div>
-      )}
+      </div>
 
       <div className="sheet-actions note-save-row">
         <button className="btn tall primary" disabled={!ready} onClick={save}>
