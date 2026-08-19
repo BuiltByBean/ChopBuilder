@@ -11,21 +11,29 @@ const STORAGE_KEY = 'chopbuilder:metronome'
 
 const subscribe = (fn: () => void) => metronome.subscribe(fn)
 
+let persistAttached = false
+
 /** Restore the last session's tempo/sound so practice picks up where it left off. */
 export function restoreMetronomeSettings() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return
-    const saved = JSON.parse(raw) as Partial<MetronomeSettings>
-    metronome.update({
-      ...saved,
-      // Never restore a half-finished tempo ramp.
-      trainer: saved.trainer
-        ? { ...metronome.settings.trainer, ...saved.trainer, enabled: false }
-        : metronome.settings.trainer,
-    })
+    if (raw) {
+      const saved = JSON.parse(raw) as Partial<MetronomeSettings>
+      metronome.update({
+        ...saved,
+        // Never restore a half-finished tempo ramp.
+        trainer: saved.trainer
+          ? { ...metronome.settings.trainer, ...saved.trainer, enabled: false }
+          : metronome.settings.trainer,
+      })
+    }
   } catch {
     /* corrupt or unavailable storage is not worth failing over */
+  }
+  // One app-wide persist subscription (guarded because StrictMode mounts twice).
+  if (!persistAttached) {
+    persistAttached = true
+    metronome.subscribe(persistMetronomeSettings)
   }
 }
 
@@ -45,13 +53,6 @@ export function persistMetronomeSettings() {
 export function useMetronome() {
   const settings = useSyncExternalStore(subscribe, () => metronome.settings)
   const running = useSyncExternalStore(subscribe, () => metronome.running)
-
-  useEffect(() => {
-    const unsub = metronome.subscribe(persistMetronomeSettings)
-    return () => {
-      unsub()
-    }
-  }, [])
 
   const update = useCallback((patch: Partial<MetronomeSettings>) => metronome.update(patch), [])
   const setBpm = useCallback((bpm: number) => metronome.update({ bpm: clampBpm(bpm) }), [])

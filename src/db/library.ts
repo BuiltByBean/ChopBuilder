@@ -1,4 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
+import type { Exercise, PREntry } from './records'
 
 export type FileKind = 'pdf' | 'image' | 'audio' | 'other'
 
@@ -21,6 +22,10 @@ export interface ScoreFile {
   createdAt: number
   /** Filled in after the PDF is first opened. */
   pageCount?: number
+  /** Tempo this piece was last practised at, restored on reopen. */
+  practiceBpm?: number
+  /** Last time the piece was opened in the practice view. */
+  lastPracticedAt?: number
 }
 
 interface ChopDB extends DBSchema {
@@ -34,26 +39,43 @@ interface ChopDB extends DBSchema {
     value: ScoreFile
     indexes: { byFolder: string }
   }
+  exercises: {
+    key: string
+    value: Exercise
+  }
+  prs: {
+    key: string
+    value: PREntry
+    indexes: { byExercise: string }
+  }
 }
 
 let dbp: Promise<IDBPDatabase<ChopDB>> | null = null
 
-const db = () => {
+/** Single shared connection — records.ts uses it too. */
+export const db = () => {
   if (!dbp) {
-    dbp = openDB<ChopDB>('chopbuilder', 1, {
-      upgrade(d) {
-        const folders = d.createObjectStore('folders', { keyPath: 'id' })
-        // parentId is nullable, so root folders are stored with '' in the index.
-        folders.createIndex('byParent', 'parentId')
-        const files = d.createObjectStore('files', { keyPath: 'id' })
-        files.createIndex('byFolder', 'folderId')
+    dbp = openDB<ChopDB>('chopbuilder', 2, {
+      upgrade(d, oldVersion) {
+        if (oldVersion < 1) {
+          const folders = d.createObjectStore('folders', { keyPath: 'id' })
+          // parentId is nullable, so root folders are stored with '' in the index.
+          folders.createIndex('byParent', 'parentId')
+          const files = d.createObjectStore('files', { keyPath: 'id' })
+          files.createIndex('byFolder', 'folderId')
+        }
+        if (oldVersion < 2) {
+          d.createObjectStore('exercises', { keyPath: 'id' })
+          const prs = d.createObjectStore('prs', { keyPath: 'id' })
+          prs.createIndex('byExercise', 'exerciseId')
+        }
       },
     })
   }
   return dbp
 }
 
-const uid = () =>
+export const uid = () =>
   `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`
 
 export function kindOf(file: { type: string; name: string }): FileKind {
@@ -166,6 +188,14 @@ export async function setPageCount(id: string, pageCount: number) {
   const f = await d.get('files', id)
   if (!f || f.pageCount === pageCount) return
   await d.put('files', { ...f, pageCount })
+}
+
+/** Stamp a practice session: when it happened and the tempo it ran at. */
+export async function setPracticeState(id: string, practiceBpm: number) {
+  const d = await db()
+  const f = await d.get('files', id)
+  if (!f) return
+  await d.put('files', { ...f, practiceBpm, lastPracticedAt: Date.now() })
 }
 
 export async function deleteFile(id: string) {

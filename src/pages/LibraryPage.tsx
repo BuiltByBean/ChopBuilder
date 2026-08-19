@@ -4,14 +4,15 @@ import { FolderTree } from '../components/Library/FolderTree'
 import { ConfirmModal, PromptModal } from '../components/Modal'
 import {
   AudioIcon,
+  Close,
   Dots,
   FileIcon,
   FolderIcon,
   FolderPlus,
   ImageIcon,
   ImageIcon as Img,
-  Metro,
   Pencil,
+  Search,
   Trash,
   Upload,
 } from '../components/icons'
@@ -34,12 +35,36 @@ export function LibraryPage() {
   const [dragging, setDragging] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [usage, setUsage] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+  const searchRef = useRef<HTMLInputElement>(null)
   const dragDepth = useRef(0)
 
   const path = folderPath(folders, currentFolderId)
   const subFolders = childFolders(folders, currentFolderId)
   const items = filesIn(files, currentFolderId)
+
+  // A live filter over the whole library, regardless of the open folder.
+  const q = search.trim().toLowerCase()
+  const hits = q
+    ? files
+        .filter((f) => f.name.toLowerCase().includes(q))
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+    : null
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement
+      const typing =
+        el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable
+      if (e.key === '/' && !typing) {
+        e.preventDefault()
+        searchRef.current?.focus()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   useEffect(() => {
     storageEstimate().then((e) => {
@@ -97,6 +122,22 @@ export function LibraryPage() {
             </span>
           ))}
           <span style={{ flex: 1 }} />
+          <div className="search-box">
+            <Search size={14} />
+            <input
+              ref={searchRef}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => e.key === 'Escape' && setSearch('')}
+              placeholder="Search music  ( / )"
+              aria-label="Search the whole library"
+            />
+            {search && (
+              <button onClick={() => setSearch('')} aria-label="Clear search">
+                <Close size={12} />
+              </button>
+            )}
+          </div>
           <button className="btn sm" onClick={() => setDialog({ kind: 'new-folder' })}>
             <FolderPlus size={14} /> New folder
           </button>
@@ -124,7 +165,37 @@ export function LibraryPage() {
             if (e.dataTransfer.files.length) await doUpload(e.dataTransfer.files)
           }}
         >
-          {subFolders.length === 0 && items.length === 0 ? (
+          {hits ? (
+            hits.length === 0 ? (
+              <div className="empty">
+                <Search size={38} />
+                <h3>Nothing matches “{search.trim()}”</h3>
+                <p>Try a shorter search — it looks through every folder at once.</p>
+              </div>
+            ) : (
+              <>
+                <h4 className="section-label">
+                  Results ({hits.length}) — everywhere in your library
+                </h4>
+                <div className="grid">
+                  {hits.map((f) => (
+                    <FileTile
+                      key={f.id}
+                      file={f}
+                      pathLabel={
+                        folderPath(folders, f.folderId)
+                          .map((x) => x.name)
+                          .join(' / ') || 'All music'
+                      }
+                      onOpen={() => nav(`/practice/${f.id}`)}
+                      onRename={() => setDialog({ kind: 'rename-file', id: f.id, name: f.name })}
+                      onDelete={() => setDialog({ kind: 'delete-file', id: f.id, name: f.name })}
+                    />
+                  ))}
+                </div>
+              </>
+            )
+          ) : subFolders.length === 0 && items.length === 0 ? (
             <div className="empty">
               <Img size={38} />
               <h3>{currentFolderId ? 'This folder is empty' : 'Your library is empty'}</h3>
@@ -361,11 +432,14 @@ function FolderTile({
 
 function FileTile({
   file,
+  pathLabel,
   onOpen,
   onRename,
   onDelete,
 }: {
   file: ScoreFile
+  /** Shown for search results, where the containing folder isn't obvious. */
+  pathLabel?: string
   onOpen: () => void
   onRename: () => void
   onDelete: () => void
@@ -394,8 +468,10 @@ function FileTile({
         <Icon size={18} />
       </div>
       <div className="tile-name">{file.name}</div>
+      {pathLabel && <div className="tile-path">{pathLabel}</div>}
       <div className="tile-meta">
         {label} · {formatBytes(file.size)}
+        {file.practiceBpm ? ` · ${file.practiceBpm} BPM` : ''}
       </div>
     </div>
   )

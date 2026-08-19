@@ -51,6 +51,10 @@ interface QueuedNote {
   beatIndex: number
   isBeat: boolean
   state: BeatState
+  /** Silences this click if it hasn't sounded yet — audio nodes are committed
+   *  to the hardware clock the moment they're scheduled, so stopping the
+   *  transport or changing tempo has to actively revoke them. */
+  kill: () => void
 }
 
 export interface VisualState {
@@ -165,20 +169,36 @@ class MetronomeEngine {
 
   // --- click synthesis -----------------------------------------------------
 
-  private scheduleClick(time: number, state: BeatState, isBeat: boolean) {
+  private scheduleClick(time: number, state: BeatState, isBeat: boolean): () => void {
     const ctx = this.ctx!
     const master = this.master!
-    if (state === 'mute') return
+    const silent = () => {}
+    if (state === 'mute') return silent
 
     const level = isBeat
       ? state === 'accent'
         ? 1
         : 0.62
       : this.settings.subVolume * 0.55
-    if (level <= 0.001) return
+    if (level <= 0.001) return silent
 
     const g = ctx.createGain()
     g.connect(master)
+    const sources: { stop: () => void }[] = []
+    const kill = () => {
+      for (const s of sources) {
+        try {
+          s.stop()
+        } catch {
+          /* already stopped */
+        }
+      }
+      try {
+        g.disconnect()
+      } catch {
+        /* already gone */
+      }
+    }
 
     switch (this.settings.timbre) {
       case 'beep': {
@@ -193,6 +213,7 @@ class MetronomeEngine {
         osc.connect(g)
         osc.start(time)
         osc.stop(time + dur + 0.02)
+        sources.push(osc)
         break
       }
       case 'wood': {
@@ -210,6 +231,7 @@ class MetronomeEngine {
         bp.connect(g)
         src.start(time)
         src.stop(time + dur + 0.02)
+        sources.push(src)
         break
       }
       case 'click': {
@@ -225,6 +247,7 @@ class MetronomeEngine {
         hp.connect(g)
         src.start(time)
         src.stop(time + dur + 0.02)
+        sources.push(src)
         break
       }
       case 'cowbell': {
@@ -242,6 +265,7 @@ class MetronomeEngine {
           osc.connect(bp)
           osc.start(time)
           osc.stop(time + dur + 0.02)
+          sources.push(osc)
         }
         g.gain.setValueAtTime(level * 0.5, time)
         g.gain.exponentialRampToValueAtTime(0.0001, time + dur)
@@ -249,6 +273,7 @@ class MetronomeEngine {
         break
       }
     }
+    return kill
   }
 
   // --- scheduling ----------------------------------------------------------
@@ -306,13 +331,14 @@ class MetronomeEngine {
         ? this.settings.accents[beatIndex] ?? 'normal'
         : 'normal'
 
-      this.scheduleClick(this.nextNoteTime, state, isBeat)
+      const kill = this.scheduleClick(this.nextNoteTime, state, isBeat)
       this.queue.push({
         step: this.step,
         time: this.nextNoteTime,
         beatIndex,
         isBeat,
         state,
+        kill,
       })
       this.advance()
     }
@@ -365,6 +391,9 @@ class MetronomeEngine {
     if (!this.running) return
     this.running = false
     this.stopTicker()
+    // Revoke every click still in flight so stopping is instant — at high
+    // tempos the schedule-ahead window holds several unplayed clicks.
+    for (const n of this.queue) n.kill()
     this.queue = []
     this.visual = {
       step: -1,
@@ -411,26 +440,49 @@ class MetronomeEngine {
       this.master.gain.setTargetAtTime(patch.volume, this.ctx.currentTime, 0.01)
     }
 
-    // Tempo/meter changes mid-bar: drop anything already queued past the next
-    // click so the new tempo takes effect immediately rather than a bar later.
+    // Tempo/meter changes mid-bar: revoke anything queued past the next click
+    // so the new tempo is audible immediately rather than a lookahead later.
     if (
       this.running &&
       (patch.bpm !== undefined ||
         patch.beatsPerBar !== undefined ||
         patch.subdivision !== undefined)
     ) {
-      this.reschedule()
+      this.reschedule(patch.beatsPerBar !== undefined || patch.subdivision !== undefined)
     }
     this.emit()
   }
 
-  private reschedule() {
+  private reschedule(meterChanged: boolean) {
     const ctx = this.ctx
     if (!ctx) return
     const now = ctx.currentTime
+    const cutoff = now + 0.03
+
+    // Clicks past the cutoff haven't sounded yet — silence them and let the
+    // scheduler re-queue replacements at the new tempo.
+    const keep: QueuedNote[] = []
+    for (const n of this.queue) {
+      if (n.time <= cutoff) keep.push(n)
+      else n.kill()
+    }
+    this.queue = keep
+
+    const stepDur = 60 / this.settings.bpm / this.settings.subdivision
+    const anchor = keep[keep.length - 1]
+    if (anchor) {
+      // Continue the pulse from the last click the ear will actually hear.
+      this.nextNoteTime = Math.max(anchor.time + stepDur, now + 0.02)
+      this.step = anchor.step + 1
+    } else {
+      // Everything scheduled has already played; just pull the next click
+      // close enough that the new tempo doesn't wait out the old interval.
+      this.nextNoteTime = Math.min(this.nextNoteTime, now + stepDur)
+      if (this.nextNoteTime < now) this.nextNoteTime = now + 0.02
+    }
+    // A different meter renumbers the bar, so restart it cleanly.
+    if (meterChanged) this.step = 0
     if (this.step >= this.stepsPerBar) this.step = 0
-    this.queue = this.queue.filter((n) => n.time <= now + 0.03)
-    if (this.nextNoteTime < now) this.nextNoteTime = now + 0.03
   }
 
   setTrainer(patch: Partial<TrainerConfig>) {

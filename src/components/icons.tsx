@@ -158,9 +158,28 @@ export const Volume = svg(
     <path d="M14.8 9.2a4 4 0 0 1 0 5.6M17.6 6.4a8 8 0 0 1 0 11.2" />
   </>,
 )
+export const Trophy = svg(
+  <>
+    <path d="M7 9.5H5.6a2.5 2.5 0 0 1 0-5H7M17 9.5h1.4a2.5 2.5 0 0 0 0-5H17" />
+    <path d="M17 3.8H7v6.2a5 5 0 0 0 10 0V3.8Z" />
+    <path d="M12 15v3.3M8.5 20.5h7" />
+  </>,
+)
 export const Trend = svg(
   <>
     <path d="M3.5 17.5 9 11l4 3.6 7.5-8" />
     <path d="M15.5 6.5h5v5" />
   </>,
+)
+export const Search = svg(
+  <>
+    <circle cx="10.5" cy="10.5" r="6.5" />
+    <path d="M15.5 15.5 21 21" />
+  </>,
+)
+export const Expand = svg(
+  <path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5" />,
+)
+export const Compress = svg(
+  <path d="M4 9h5V4M20 9h-5V4M4 15h5v5M20 15h-5v5" />,
 )

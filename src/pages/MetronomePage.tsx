@@ -11,7 +11,10 @@ export function MetronomePage() {
     if (!loaded) void load()
   }, [loaded, load])
 
-  const recent = [...files].sort((a, b) => b.createdAt - a.createdAt).slice(0, 4)
+  // Pieces you actually practised float to the top; fresh uploads follow.
+  const recent = [...files]
+    .sort((a, b) => (b.lastPracticedAt ?? b.createdAt) - (a.lastPracticedAt ?? a.createdAt))
+    .slice(0, 4)
 
   return (
     <div className="metronome-page">
@@ -35,6 +38,7 @@ export function MetronomePage() {
                   <div className="tile-name">{f.name}</div>
                   <div className="tile-meta">
                     {f.kind === 'pdf' && f.pageCount ? `${f.pageCount} pages` : f.kind.toUpperCase()}
+                    {f.practiceBpm ? ` · ${f.practiceBpm} BPM` : ''}
                   </div>
                 </Link>
               ))}

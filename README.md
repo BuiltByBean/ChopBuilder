@@ -3,7 +3,8 @@
 A precision metronome (20–300 BPM) with a sheet-music library you can practise alongside.
 
 Everything runs in the browser. Your music is stored locally on your device — nothing
-is uploaded to a server.
+is uploaded to a server. The built site is a PWA: it can be installed like an app, and
+after a couple of visits it loads fully offline.
 
 ## Run it
 
@@ -46,6 +47,13 @@ future, so the pulse stays sample-accurate and doesn't drift, even while pages r
 | `←` `→` | ±1 BPM (±10 with `Shift`) — page turns on the practice screen |
 | `↑` `↓` | ±1 BPM (±10 with `Shift`) on the practice screen |
 | `T` | Tap tempo |
+| `PgUp` `PgDn` | Page turns on the practice screen (what Bluetooth page-turner pedals send) |
+| `Home` `End` | First / last page on the practice screen |
+| `F` | Fullscreen practice view |
+| `/` | Search, in the library |
+
+While the click is running (or a score is open) the app holds a screen wake lock, so
+your display won't sleep mid-practice.
 
 ## The music library
 
@@ -55,6 +63,7 @@ Upload PDFs, scans, photos, or audio and organise them into nested folders — a
 - Drag files from your desktop onto any folder or the main area to upload
 - Drag files and folders between folders to reorganise
 - Rename and delete from the `⋯` menu on each tile
+- Search the whole library at once with the box in the toolbar (`/` focuses it)
 
 Files live in IndexedDB on this device. That makes them load instantly and work offline,
 but it also means they're per-browser: they won't follow you to another machine, and
@@ -67,10 +76,20 @@ Open any file to get the score and the metronome side by side.
 - **1, 2, 3, or 4 pages at once** — four-up uses a 2×2 grid, the rest sit in a row
 - **Next / previous** advance by a whole spread, so two-up jumps two pages at a time
 - **Zoom** on top of the automatic fit-to-window sizing
+- **Fullscreen** (`F`) hides all chrome for music-stand use
+- **Tempo memory** — each piece remembers the BPM you last practised it at and restores
+  it when you reopen the piece; "Jump back in" on the metronome page lists what you
+  practised most recently
 - The metronome panel collapses to a slim rail that still flashes the beat
 
 The metronome is one shared engine across the whole app, so it keeps playing while you
 move between the library and the score, and the header transport reflects it everywhere.
+
+## Progress
+
+The Progress page tracks personal records: create an exercise (Single-stroke roll,
+Paradiddles, …), log the tempo you hit, and the history shows every time you beat your
+old record. Records live in the same on-device database as the library.
 
 ## Layout
 

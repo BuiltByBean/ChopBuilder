@@ -24,6 +24,7 @@ interface LibraryState {
   moveFile: (id: string, folderId: string | null) => Promise<void>
   removeFile: (id: string) => Promise<void>
   notePageCount: (id: string, pages: number) => Promise<void>
+  notePractice: (id: string, bpm: number) => Promise<void>
 }
 
 export const useLibrary = create<LibraryState>((set, get) => ({
@@ -106,6 +107,15 @@ export const useLibrary = create<LibraryState>((set, get) => ({
   notePageCount: async (id, pages) => {
     await api.setPageCount(id, pages)
     set((s) => ({ files: s.files.map((f) => (f.id === id ? { ...f, pageCount: pages } : f)) }))
+  },
+
+  notePractice: async (id, bpm) => {
+    await api.setPracticeState(id, bpm)
+    set((s) => ({
+      files: s.files.map((f) =>
+        f.id === id ? { ...f, practiceBpm: bpm, lastPracticedAt: Date.now() } : f,
+      ),
+    }))
   },
 }))
 

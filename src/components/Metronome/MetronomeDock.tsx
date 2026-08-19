@@ -7,7 +7,7 @@ import { Close, Pause, Play, Trend, Volume } from '../icons'
 
 /** The metronome as it appears next to sheet music — same engine, tighter layout. */
 export function MetronomeDock({ onHide }: { onHide: () => void }) {
-  const { settings, running, update, setBpm, nudge, setTrainer, toggle } = useMetronome()
+  const { settings, running, update, setBpm, nudge, setTrainer, toggle, preview } = useMetronome()
   const { tap } = useTapTempo(setBpm)
   const drag = useDragTempo(
     useCallback(() => metronome.settings.bpm, []),
@@ -119,7 +119,10 @@ export function MetronomeDock({ onHide }: { onHide: () => void }) {
           <select
             className="input"
             value={settings.timbre}
-            onChange={(e) => update({ timbre: e.target.value as never })}
+            onChange={(e) => {
+              update({ timbre: e.target.value as never })
+              if (!running) preview('accent')
+            }}
           >
             {TIMBRES.map((s) => (
               <option key={s.value} value={s.value}>

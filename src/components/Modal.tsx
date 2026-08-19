@@ -30,6 +30,7 @@ export function PromptModal({
     <div
       className="modal-backdrop"
       onMouseDown={(e) => e.target === e.currentTarget && onCancel()}
+      onKeyDown={(e) => e.key === 'Escape' && onCancel()}
       role="dialog"
       aria-modal="true"
       aria-label={title}
@@ -50,7 +51,6 @@ export function PromptModal({
             className="input"
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            onKeyDown={(e) => e.key === 'Escape' && onCancel()}
           />
         </div>
         <div className="modal-actions">
@@ -87,6 +87,7 @@ export function ConfirmModal({
     <div
       className="modal-backdrop"
       onMouseDown={(e) => e.target === e.currentTarget && onCancel()}
+      onKeyDown={(e) => e.key === 'Escape' && onCancel()}
       role="dialog"
       aria-modal="true"
       aria-label={title}

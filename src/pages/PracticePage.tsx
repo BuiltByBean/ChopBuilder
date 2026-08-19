@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ScoreViewer } from '../components/Viewer/ScoreViewer'
 import { MetronomeDock } from '../components/Metronome/MetronomeDock'
+import { metronome } from '../audio/metronome'
 import { useBeat, useMetronome } from '../state/useMetronome'
 import { useLibrary } from '../state/useLibrary'
 import { getFile, type ScoreFile } from '../db/library'
@@ -9,6 +10,8 @@ import {
   Back,
   ChevronLeft,
   ChevronRight,
+  Compress,
+  Expand,
   Grid1,
   Grid2,
   Grid3,
@@ -32,6 +35,7 @@ export function PracticePage() {
   const { fileId } = useParams()
   const nav = useNavigate()
   const notePageCount = useLibrary((s) => s.notePageCount)
+  const notePractice = useLibrary((s) => s.notePractice)
 
   const [file, setFile] = useState<ScoreFile | null>(null)
   const [missing, setMissing] = useState(false)
@@ -42,6 +46,8 @@ export function PracticePage() {
   const [zoom, setZoom] = useState(1)
   const [total, setTotal] = useState(0)
   const [showDock, setShowDock] = useState(() => localStorage.getItem(DOCK_KEY) !== 'off')
+  const [isFull, setIsFull] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let dead = false
@@ -52,11 +58,49 @@ export function PracticePage() {
       setFile(f)
       setTotal(f.pageCount ?? 0)
       setStartPage(1)
+      // Pick the piece up at the tempo it was last practised at — unless the
+      // click is already running, in which case yanking it would be rude.
+      if (f.practiceBpm && !metronome.running) {
+        metronome.update({ bpm: f.practiceBpm })
+      }
     })
     return () => {
       dead = true
     }
   }, [fileId])
+
+  // Remember this session: stamp the visit, then keep the stored tempo in
+  // sync (debounced) so reopening the piece restores where you left off.
+  useEffect(() => {
+    if (!file) return
+    const save = () => notePractice(file.id, metronome.settings.bpm)
+    save()
+    let t: number | undefined
+    const unsub = metronome.subscribe(() => {
+      clearTimeout(t)
+      t = window.setTimeout(save, 1200)
+    })
+    return () => {
+      clearTimeout(t)
+      unsub()
+      save()
+    }
+  }, [file, notePractice])
+
+  // Fullscreen practice: the score fills the display, nav chrome disappears.
+  useEffect(() => {
+    const onChange = () => setIsFull(Boolean(document.fullscreenElement))
+    document.addEventListener('fullscreenchange', onChange)
+    return () => document.removeEventListener('fullscreenchange', onChange)
+  }, [])
+
+  const toggleFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      void document.exitFullscreen().catch(() => {})
+    } else {
+      void rootRef.current?.requestFullscreen().catch(() => {})
+    }
+  }, [])
 
   useEffect(() => localStorage.setItem(LAYOUT_KEY, String(pagesPerView)), [pagesPerView])
   useEffect(() => localStorage.setItem(DOCK_KEY, showDock ? 'on' : 'off'), [showDock])
@@ -86,13 +130,25 @@ export function PracticePage() {
       const el = e.target as HTMLElement
       if (el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA') return
       switch (e.key) {
+        // PageDown/PageUp match what Bluetooth page-turner pedals send, so a
+        // pedal works here with no setup.
         case 'ArrowRight':
+        case 'PageDown':
           e.preventDefault()
           goNext()
           break
         case 'ArrowLeft':
+        case 'PageUp':
           e.preventDefault()
           goPrev()
+          break
+        case 'Home':
+          e.preventDefault()
+          setStartPage(1)
+          break
+        case 'End':
+          e.preventDefault()
+          setStartPage(lastStart)
           break
         case 'ArrowUp':
           e.preventDefault()
@@ -102,11 +158,16 @@ export function PracticePage() {
           e.preventDefault()
           nudge(e.shiftKey ? -10 : -1)
           break
+        case 'f':
+        case 'F':
+          e.preventDefault()
+          toggleFullscreen()
+          break
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [goNext, goPrev, nudge])
+  }, [goNext, goPrev, nudge, lastStart, toggleFullscreen])
 
   const handlePageCount = useCallback(
     (n: number) => {
@@ -142,7 +203,7 @@ export function PracticePage() {
   const viewable = file.kind === 'pdf' || file.kind === 'image'
 
   return (
-    <div className="practice">
+    <div className="practice" ref={rootRef}>
       <div className="score-area">
         <div className="viewer-bar">
           <button className="btn ghost icon" onClick={() => nav('/library')} title="Back to library">
@@ -219,6 +280,14 @@ export function PracticePage() {
           )}
 
           <span style={{ flex: 1 }} />
+          <button
+            className="btn ghost icon"
+            onClick={toggleFullscreen}
+            title={isFull ? 'Exit fullscreen (F)' : 'Fullscreen (F)'}
+            aria-label={isFull ? 'Exit fullscreen' : 'Enter fullscreen'}
+          >
+            {isFull ? <Compress size={15} /> : <Expand size={15} />}
+          </button>
           {!showDock && (
             <button className="btn sm primary" onClick={() => setShowDock(true)}>
               <Metro size={14} /> Metronome

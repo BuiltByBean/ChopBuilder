@@ -31,6 +31,7 @@ export default defineConfig({
   // Relative base so the built site works from a subfolder as well as a domain root.
   base: './',
   plugins: [react(), pdfjsAssets()],
-  server: { port: 5273 },
+  // PORT lets the dev-server launcher pick a free port when 5273 is taken.
+  server: { port: Number(process.env.PORT) || 5273 },
   build: { chunkSizeWarningLimit: 1600 },
 })

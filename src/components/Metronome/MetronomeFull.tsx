@@ -44,8 +44,9 @@ export function MetronomeFull() {
       : 0
   const minutesToTarget = (barsToTarget * settings.beatsPerBar * 60) / settings.bpm / 60
 
+  // The page provides the .metronome-shell wrapper; these cards slot into it.
   return (
-    <div className="metronome-shell">
+    <>
       <section className="card">
         <div className="tempo-stage">
           <div className="tempo-side">
@@ -273,7 +274,11 @@ export function MetronomeFull() {
             <div className="field">
               <label htmlFor="tr-amount">Speed up by</label>
               <div style={{ display: 'flex', gap: 6 }}>
-                <button className="btn icon" onClick={() => setTrainer({ amount: Math.max(1, t.amount - 1) })}>
+                <button
+                  className="btn icon"
+                  aria-label="Smaller step"
+                  onClick={() => setTrainer({ amount: Math.max(1, t.amount - 1) })}
+                >
                   <Minus size={14} />
                 </button>
                 <input
@@ -286,7 +291,11 @@ export function MetronomeFull() {
                   onChange={(e) => setTrainer({ amount: Math.max(1, Number(e.target.value) || 1) })}
                   style={{ textAlign: 'center' }}
                 />
-                <button className="btn icon" onClick={() => setTrainer({ amount: Math.min(50, t.amount + 1) })}>
+                <button
+                  className="btn icon"
+                  aria-label="Bigger step"
+                  onClick={() => setTrainer({ amount: Math.min(50, t.amount + 1) })}
+                >
                   <Plus size={14} />
                 </button>
               </div>
@@ -349,6 +358,6 @@ export function MetronomeFull() {
           </p>
         </div>
       </section>
-    </div>
+    </>
   )
 }

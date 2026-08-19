@@ -3,6 +3,7 @@ import { Link, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { MetronomePage } from './pages/MetronomePage'
 import { LibraryPage } from './pages/LibraryPage'
 import { PracticePage } from './pages/PracticePage'
+import { RecordsPage } from './pages/RecordsPage'
 import { metronome } from './audio/metronome'
 import { restoreMetronomeSettings, useBeat, useMetronome, useTapTempo } from './state/useMetronome'
 import { useLibrary } from './state/useLibrary'
@@ -46,6 +47,12 @@ export default function App() {
           >
             Music library
           </NavLink>
+          <NavLink
+            to="/progress"
+            className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+          >
+            Progress
+          </NavLink>
         </nav>
         <span className="nav-spacer" />
         {pathname !== '/' && <MiniTransport />}
@@ -55,14 +62,57 @@ export default function App() {
         <Routes>
           <Route path="/" element={<MetronomePage />} />
           <Route path="/library" element={<LibraryPage />} />
+          <Route path="/progress" element={<RecordsPage />} />
           <Route path="/practice/:fileId" element={<PracticePage />} />
           <Route path="*" element={<MetronomePage />} />
         </Routes>
       </main>
 
       <GlobalKeys />
+      <KeepAwake />
     </div>
   )
+}
+
+/**
+ * Hold a screen wake lock while the click is running or a score is open —
+ * a display that sleeps mid-practice is the one thing a metronome app must
+ * never let happen. No-ops on browsers without the API.
+ */
+function KeepAwake() {
+  const { running } = useMetronome()
+  const { pathname } = useLocation()
+  const active = running || pathname.startsWith('/practice')
+
+  useEffect(() => {
+    if (!active || !('wakeLock' in navigator)) return
+    let lock: WakeLockSentinel | null = null
+    let dead = false
+    const acquire = () =>
+      navigator.wakeLock
+        .request('screen')
+        .then((l) => {
+          if (dead) void l.release().catch(() => {})
+          else lock = l
+        })
+        .catch(() => {
+          /* denied (battery saver etc.) — nothing to do */
+        })
+    void acquire()
+    // The lock is released automatically when the tab hides; take it back
+    // when the user returns.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void acquire()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      dead = true
+      document.removeEventListener('visibilitychange', onVisible)
+      void lock?.release().catch(() => {})
+    }
+  }, [active])
+
+  return null
 }
 
 /** Always-available transport so the metronome is one click away from any page. */
