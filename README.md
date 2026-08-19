@@ -3,9 +3,13 @@
 A drumline progress tracker and a precision metronome (20–300 BPM) with a sheet-music
 library — one offline-first app for running a battery and building your own chops.
 
-Everything runs in the browser. All data is stored locally on your device — nothing
-is uploaded to a server, ever. The built site is a PWA: it can be installed like an app,
-and after a couple of visits it loads fully offline.
+**Live app:** https://chopbuilder-production-40a9.up.railway.app
+
+Everything runs in the browser and works fully offline; the app is a PWA you install
+from the browser menu. Tracker data (players, checkpoints, statuses, notes, sessions)
+syncs between your devices through a tiny Railway server when sync is enabled in
+More → Sync — offline-first, last-write-wins, nothing blocks on the network.
+Recordings and the sheet-music library stay on the device that captured them.
 
 ## The drumline tracker
 
@@ -54,14 +58,32 @@ npm run dev
 
 Then open http://localhost:5273.
 
-To build a static site you can host anywhere:
+To build the static client:
 
 ```bash
 npm run build
 ```
 
-The output in `dist/` is plain static files. It uses hash-based routing, so it works on
-GitHub Pages, Netlify, or any host without extra redirect rules.
+The output in `dist/` is plain static files with hash routing — it also works on any
+static host (sync then needs the server URL set in More → Sync).
+
+## Sync server (Railway)
+
+`server.py` is a small Flask app that serves the built client and `POST /api/sync` —
+a single push+pull endpoint backed by Postgres (`rows` table, JSONB). Conflicts
+resolve last-write-wins on the client `updatedAt`; the pull watermark uses server
+time so device clock skew can't hide rows; deletes are tombstones so they propagate.
+Auth is a shared key: the `X-Chop-Key` header must match the `CHOP_KEY` env var.
+Every device enters the same key once in More → Sync.
+
+Deployed on Railway from the `Dockerfile` (node build stage → python runtime), with
+`DATABASE_URL` referenced from the Postgres service and `CHOP_KEY` set on the
+service. Local dev without Postgres:
+
+```bash
+npm run build
+CHOP_DEV=1 python server.py   # http://127.0.0.1:4181 — in-memory store
+```
 
 ## The metronome
 

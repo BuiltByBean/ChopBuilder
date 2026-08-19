@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { usePrefs } from '../state/usePrefs'
 import { useToast } from '../state/useToast'
+import { syncDetailLine, syncNow, useSync } from '../sync/sync'
 import { Sheet } from '../components/Sheet'
 import {
   AudioIcon,
@@ -9,6 +10,7 @@ import {
   Download,
   Lock,
   Metro,
+  NoteIcon,
   Sliders,
   Sun,
   Users,
@@ -42,6 +44,14 @@ export function MorePage() {
           </span>
           <ChevronRight size={15} className="more-caret" />
         </Link>
+        <Link to="/notes" className="more-row card">
+          <NoteIcon size={18} />
+          <span className="more-label">
+            Notes
+            <small>Every note, open and resolved</small>
+          </span>
+          <ChevronRight size={15} className="more-caret" />
+        </Link>
         <Link to="/recordings" className="more-row card">
           <AudioIcon size={18} />
           <span className="more-label">
@@ -67,6 +77,8 @@ export function MorePage() {
           <ChevronRight size={15} className="more-caret" />
         </Link>
       </div>
+
+      <SyncCard />
 
       <section className="pref-block card">
         <h4 className="section-label">Display</h4>
@@ -111,6 +123,79 @@ export function MorePage() {
 
       {pinSheet && <PinSheet mode={pinSheet} onClose={() => setPinSheet(null)} />}
     </div>
+  )
+}
+
+/**
+ * Multi-device sync settings. The app stays offline-first either way — sync
+ * just mirrors the tracker between devices through the Railway server.
+ */
+function SyncCard() {
+  const sync = useSync()
+  const setConfig = useSync((s) => s.setConfig)
+  const [url, setUrl] = useState(sync.url)
+  const [key, setKey] = useState(sync.key)
+
+  const dot =
+    sync.status === 'ok' ? 'ok' : sync.status === 'error' || sync.status === 'noserver' ? 'bad' : 'dim'
+
+  return (
+    <section className="pref-block card">
+      <h4 className="section-label">Sync</h4>
+      <label className="switch pref-row">
+        <input
+          type="checkbox"
+          checked={sync.enabled}
+          onChange={(e) => setConfig({ enabled: e.target.checked })}
+        />
+        <span className="track" />
+        <span className="switch-label">Sync between devices</span>
+      </label>
+      <p className="pref-note">
+        Players, checkpoints, statuses, notes and sessions mirror to every device signed into the
+        same sync server. Recordings stay on the device that captured them. Newest edit wins when
+        two devices disagree.
+      </p>
+      {sync.enabled && (
+        <>
+          <div className="field">
+            <label htmlFor="sync-url">Server (blank = this site)</label>
+            <input
+              id="sync-url"
+              className="input"
+              placeholder="https://chopbuilder.up.railway.app"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              onBlur={() => setConfig({ url })}
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="sync-key">Sync key</label>
+            <input
+              id="sync-key"
+              className="input"
+              placeholder="same key on every device"
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              onBlur={() => setConfig({ key })}
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+            />
+          </div>
+          <div className="sync-status-row">
+            <span className={`sync-dot ${dot}`} aria-hidden="true" />
+            <span className="sync-status">{syncDetailLine(sync)}</span>
+            <button className="btn sm" onClick={() => void syncNow('manual')}>
+              Sync now
+            </button>
+          </div>
+        </>
+      )}
+    </section>
   )
 }
 

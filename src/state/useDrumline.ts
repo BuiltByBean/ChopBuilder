@@ -72,7 +72,8 @@ interface DrumlineState {
   addRecording: (meta: Omit<RecordingMeta, 'id' | 'createdAt'>, blob: Blob) => RecordingMeta
   removeRecording: (id: string) => void
 
-  reloadAfterImport: () => Promise<void>
+  /** Re-read every store from IndexedDB — after a sync pull or a backup import. */
+  reloadFromDb: () => Promise<void>
 }
 
 export const useDrumline = create<DrumlineState>((set, get) => ({
@@ -263,7 +264,7 @@ export const useDrumline = create<DrumlineState>((set, get) => ({
     persist(api.deleteRecording(id))
   },
 
-  reloadAfterImport: async () => {
+  reloadFromDb: async () => {
     set({ loaded: false })
     await get().load()
   },

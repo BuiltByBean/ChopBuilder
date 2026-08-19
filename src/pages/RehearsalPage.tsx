@@ -68,6 +68,10 @@ export function RehearsalPage() {
         </div>
       )}
 
+      {active.length > 0 && (
+        <p className="grid-hint">Tap a player to log a note · hold to open their checkpoints</p>
+      )}
+
       {groups.map((g) => (
         <section key={g.name} className="tile-section">
           <h4 className="section-label">{g.name}</h4>
@@ -89,13 +93,14 @@ export function RehearsalPage() {
   )
 }
 
-/** Tempo stamp + sunlight mode + the always-there section note button. */
+/** Tempo stamp + sunlight mode + notes shortcut + the section note button. */
 function RehearsalBar({ onSectionNote }: { onSectionNote: () => void }) {
   const rehearsalBpm = usePrefs((s) => s.rehearsalBpm)
   const setRehearsalBpm = usePrefs((s) => s.setRehearsalBpm)
   const outdoor = usePrefs((s) => s.outdoor)
   const toggleOutdoor = usePrefs((s) => s.toggleOutdoor)
   const { settings, running } = useMetronome()
+  const openNotes = useDrumline((s) => s.notes.filter((n) => !n.resolved).length)
 
   return (
     <div className="rehearsal-bar">
@@ -126,6 +131,10 @@ function RehearsalBar({ onSectionNote }: { onSectionNote: () => void }) {
         )}
       </div>
       <span className="nav-spacer" />
+      <Link to="/notes" className="btn icon tall notes-link" aria-label="All notes" title="All notes">
+        <NoteIcon size={18} />
+        {openNotes > 0 && <i className="icon-badge">{openNotes}</i>}
+      </Link>
       <button
         className={`btn icon tall${outdoor ? ' primary' : ''}`}
         onClick={toggleOutdoor}

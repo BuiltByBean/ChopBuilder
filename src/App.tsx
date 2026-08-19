@@ -8,6 +8,7 @@ import { RehearsalPage } from './pages/RehearsalPage'
 import { PlayerPage } from './pages/PlayerPage'
 import { SectionPage } from './pages/SectionPage'
 import { SessionsPage } from './pages/SessionsPage'
+import { NotesPage } from './pages/NotesPage'
 import { RecordingsPage } from './pages/RecordingsPage'
 import { MorePage } from './pages/MorePage'
 import { RosterPage } from './pages/RosterPage'
@@ -20,6 +21,7 @@ import { useLibrary } from './state/useLibrary'
 import { useDrumline } from './state/useDrumline'
 import { usePrefs } from './state/usePrefs'
 import { useToast } from './state/useToast'
+import { initSync } from './sync/sync'
 import { Calendar, HeatGrid, Metro, MoreH, Pause, Play, Sticks } from './components/icons'
 
 const isChopsPath = (p: string) =>
@@ -36,6 +38,7 @@ export default function App() {
     restoreMetronomeSettings()
     if (!loaded) void load()
     void loadDrumline()
+    initSync()
     // Browsers gate audio behind a gesture; warming the context on the first
     // interaction means pressing play later starts instantly.
     const warm = () => metronome.unlock()
@@ -67,6 +70,7 @@ export default function App() {
           <TopLink to="/" label="Rehearsal" end />
           <TopLink to="/section" label="Section" />
           <TopLink to="/sessions" label="Sessions" />
+          <TopLink to="/notes" label="Notes" />
           <TopLink to="/metronome" label="Metronome" />
           <TopLink to="/library" label="Library" />
           <TopLink to="/progress" label="Progress" />
@@ -84,6 +88,7 @@ export default function App() {
           <Route path="/player/:playerId" element={<PlayerPage />} />
           <Route path="/section" element={<SectionPage />} />
           <Route path="/sessions" element={<SessionsPage />} />
+          <Route path="/notes" element={<NotesPage />} />
           <Route path="/recordings" element={<RecordingsPage />} />
           <Route path="/more" element={<MorePage />} />
           <Route path="/more/roster" element={<RosterPage />} />
@@ -122,7 +127,7 @@ function TabBar({ pathname }: { pathname: string }) {
     { to: '/section', label: 'Section', icon: <HeatGrid size={20} />, active: pathname.startsWith('/section') },
     { to: '/sessions', label: 'Sessions', icon: <Calendar size={20} />, active: pathname.startsWith('/sessions') },
     { to: '/metronome', label: 'Chops', icon: <Metro size={20} />, active: isChopsPath(pathname) },
-    { to: '/more', label: 'More', icon: <MoreH size={20} />, active: pathname.startsWith('/more') || pathname.startsWith('/recordings') },
+    { to: '/more', label: 'More', icon: <MoreH size={20} />, active: pathname.startsWith('/more') || pathname.startsWith('/recordings') || pathname.startsWith('/notes') },
   ]
   return (
     <nav className="tabbar" aria-label="Main">

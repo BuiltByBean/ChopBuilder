@@ -66,6 +66,8 @@ export interface Player {
   /** Benched/archived players keep their whole history; they just leave the grids. */
   active: boolean
   createdAt: number
+  /** Stamped on every write; drives last-write-wins sync. */
+  updatedAt?: number
 }
 
 /** "Ty L." with an initial, or the bare label ("Snare 1") for no-name rosters. */
@@ -102,6 +104,7 @@ export interface Checkpoint {
   sortOrder: number
   active: boolean
   createdAt: number
+  updatedAt?: number
 }
 
 /**
@@ -116,6 +119,7 @@ export interface PlayerCheckpoint {
   status: CheckStatus
   tempoPassed: number | null
   lastUpdated: number
+  updatedAt?: number
 }
 
 export const pcId = (playerId: string, checkpointId: string) => `${playerId}|${checkpointId}`
@@ -131,6 +135,7 @@ export interface StatusChange {
   /** Rehearsal tempo running when the change was logged. */
   bpm: number | null
   at: number
+  updatedAt?: number
 }
 
 export interface Note {
@@ -145,6 +150,7 @@ export interface Note {
   createdAt: number
   resolved: boolean
   resolvedAt: number | null
+  updatedAt?: number
 }
 
 export interface Session {
@@ -157,6 +163,7 @@ export interface Session {
   whatWorked: string
   nextTime: string
   createdAt: number
+  updatedAt?: number
 }
 
 export interface RecordingMeta {
@@ -259,6 +266,64 @@ export function seedCheckpoints(now: number): Checkpoint[] {
 
 // --- persistence -------------------------------------------------------------
 
+/** Stores that participate in multi-device sync (recordings stay local — audio is heavy). */
+export const SYNCED_STORES = [
+  'dlPlayers',
+  'dlCheckpoints',
+  'dlPlayerCheckpoints',
+  'dlHistory',
+  'dlNotes',
+  'dlSessions',
+] as const
+export type SyncedStore = (typeof SYNCED_STORES)[number]
+
+/** A deleted row leaves this marker behind so the deletion propagates to other devices. */
+export interface Tombstone {
+  /** `${store}:${rowId}` so one store can hold markers for every synced store. */
+  id: string
+  store: SyncedStore
+  rowId: string
+  updatedAt: number
+}
+
+/** Best-effort modification time for rows written before sync existed. */
+export function effUpdated(row: Record<string, unknown>): number {
+  for (const k of ['updatedAt', 'lastUpdated', 'resolvedAt', 'createdAt', 'at', 'date']) {
+    const v = row[k]
+    if (typeof v === 'number' && v > 0) return v
+  }
+  return 1
+}
+
+/** Fired after every local write so the sync engine can schedule a push. */
+export const CHANGED_EVENT = 'chopbuilder:changed'
+const signalChange = () => {
+  try {
+    window.dispatchEvent(new Event(CHANGED_EVENT))
+  } catch {
+    /* non-window context */
+  }
+}
+
+async function putSynced<S extends SyncedStore>(
+  store: S,
+  row: { id: string; updatedAt?: number },
+) {
+  await (await db()).put(store, { ...row, updatedAt: Date.now() } as never)
+  signalChange()
+}
+
+async function deleteSynced(store: SyncedStore, rowId: string) {
+  const d = await db()
+  const tx = d.transaction([store, 'tombstones'], 'readwrite')
+  void tx.objectStore(store).delete(rowId)
+  void tx
+    .objectStore('tombstones')
+    .put({ id: `${store}:${rowId}`, store, rowId, updatedAt: Date.now() })
+  await tx.done
+  signalChange()
+}
+
 export interface DrumlineData {
   players: Player[]
   checkpoints: Checkpoint[]
@@ -282,47 +347,53 @@ export async function loadAll(): Promise<DrumlineData> {
       d.getAll('dlRecordings'),
     ])
   // First run: seed the technique standards. Deactivating rows keeps them in
-  // the store, so an empty store can only mean "never seeded".
+  // the store, so an empty store can only mean "never seeded". Seeds carry
+  // updatedAt: 1 so a fresh device's defaults can never out-vote a real edit
+  // (rename/reorder/retire) coming in from sync.
   let cps = checkpoints
   if (cps.length === 0) {
-    cps = seedCheckpoints(Date.now())
-    await putCheckpoints(cps)
+    cps = seedCheckpoints(Date.now()).map((c) => ({ ...c, updatedAt: 1 }))
+    const tx = d.transaction('dlCheckpoints', 'readwrite')
+    for (const c of cps) void tx.store.put(c)
+    await tx.done
   }
   return { players, checkpoints: cps, playerCheckpoints, history, notes, sessions, recordings }
 }
 
 export async function putPlayer(p: Player) {
-  await (await db()).put('dlPlayers', p)
+  await putSynced('dlPlayers', p)
 }
 export async function putCheckpoint(c: Checkpoint) {
-  await (await db()).put('dlCheckpoints', c)
+  await putSynced('dlCheckpoints', c)
 }
 export async function putCheckpoints(list: Checkpoint[]) {
   const d = await db()
+  const now = Date.now()
   const tx = d.transaction('dlCheckpoints', 'readwrite')
-  for (const c of list) void tx.store.put(c)
+  for (const c of list) void tx.store.put({ ...c, updatedAt: now })
   await tx.done
+  signalChange()
 }
 export async function putPlayerCheckpoint(pc: PlayerCheckpoint) {
-  await (await db()).put('dlPlayerCheckpoints', pc)
+  await putSynced('dlPlayerCheckpoints', pc)
 }
 export async function putHistory(h: StatusChange) {
-  await (await db()).put('dlHistory', h)
+  await putSynced('dlHistory', h)
 }
 export async function deleteHistory(id: string) {
-  await (await db()).delete('dlHistory', id)
+  await deleteSynced('dlHistory', id)
 }
 export async function putNote(n: Note) {
-  await (await db()).put('dlNotes', n)
+  await putSynced('dlNotes', n)
 }
 export async function deleteNote(id: string) {
-  await (await db()).delete('dlNotes', id)
+  await deleteSynced('dlNotes', id)
 }
 export async function putSession(s: Session) {
-  await (await db()).put('dlSessions', s)
+  await putSynced('dlSessions', s)
 }
 export async function deleteSession(id: string) {
-  await (await db()).delete('dlSessions', id)
+  await deleteSynced('dlSessions', id)
 }
 
 export async function putRecording(meta: RecordingMeta, blob: Blob) {
@@ -416,6 +487,7 @@ export async function importBackup(file: BackupFile) {
     'dlSessions',
     'dlRecordings',
     'dlRecordingBlobs',
+    'tombstones',
     'exercises',
     'prs',
   ] as const

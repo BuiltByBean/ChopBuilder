@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { exportBackup, importBackup, type BackupFile } from '../db/drumline'
 import { formatBytes, storageEstimate } from '../db/library'
 import { useDrumline } from '../state/useDrumline'
+import { resetSyncWatermarks } from '../sync/sync'
 import { useToast } from '../state/useToast'
 import { ConfirmModal } from '../components/Modal'
 import { Back, Download, Upload } from '../components/icons'
@@ -13,7 +14,7 @@ import { Back, Download, Upload } from '../components/icons'
  * the recordings too (base64, so expect it to be chunky).
  */
 export function BackupPage() {
-  const reload = useDrumline((s) => s.reloadAfterImport)
+  const reload = useDrumline((s) => s.reloadFromDb)
   const recordings = useDrumline((s) => s.recordings)
   const show = useToast((s) => s.show)
 
@@ -139,6 +140,7 @@ export function BackupPage() {
             void importBackup(file)
               .then(async () => {
                 await reload()
+                resetSyncWatermarks()
                 show('Backup restored')
               })
               .catch(() => show('Import failed — nothing was changed'))

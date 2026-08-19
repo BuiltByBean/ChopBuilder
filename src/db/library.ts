@@ -9,6 +9,7 @@ import type {
   RecordingMeta,
   Session,
   StatusChange,
+  Tombstone,
 } from './drumline'
 
 export type FileKind = 'pdf' | 'image' | 'audio' | 'other'
@@ -90,6 +91,10 @@ interface ChopDB extends DBSchema {
     key: string
     value: RecordingBlob
   }
+  tombstones: {
+    key: string
+    value: Tombstone
+  }
 }
 
 let dbp: Promise<IDBPDatabase<ChopDB>> | null = null
@@ -97,7 +102,7 @@ let dbp: Promise<IDBPDatabase<ChopDB>> | null = null
 /** Single shared connection — records.ts uses it too. */
 export const db = () => {
   if (!dbp) {
-    dbp = openDB<ChopDB>('chopbuilder', 3, {
+    dbp = openDB<ChopDB>('chopbuilder', 4, {
       upgrade(d, oldVersion) {
         if (oldVersion < 1) {
           const folders = d.createObjectStore('folders', { keyPath: 'id' })
@@ -122,6 +127,10 @@ export const db = () => {
           d.createObjectStore('dlSessions', { keyPath: 'id' })
           d.createObjectStore('dlRecordings', { keyPath: 'id' })
           d.createObjectStore('dlRecordingBlobs', { keyPath: 'id' })
+        }
+        if (oldVersion < 4) {
+          // Deletion markers so removals propagate through multi-device sync.
+          d.createObjectStore('tombstones', { keyPath: 'id' })
         }
       },
     })
