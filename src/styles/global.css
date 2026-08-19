@@ -2159,6 +2159,9 @@ html[data-mode='outdoor'] .beat.lit[data-state='accent'] {
   flex: none;
   width: 168px;
 }
+.note-save-row .note-delete {
+  flex: 0 0 56px;
+}
 .date-field .input {
   min-height: 48px;
 }

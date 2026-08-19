@@ -62,6 +62,9 @@ interface DrumlineState {
   }) => Note
   removeNote: (id: string) => void
   setNoteResolved: (id: string, resolved: boolean) => void
+  updateNote: (id: string, patch: Partial<Omit<Note, 'id'>>) => void
+  /** Puts a deleted note back exactly as it was — the delete toast's Undo. */
+  restoreNote: (n: Note) => void
 
   addCheckpoint: (input: Omit<Checkpoint, 'id' | 'createdAt' | 'sortOrder'>) => void
   updateCheckpoint: (id: string, patch: Partial<Omit<Checkpoint, 'id'>>) => void
@@ -197,6 +200,19 @@ export const useDrumline = create<DrumlineState>((set, get) => ({
     const next: Note = { ...cur, resolved, resolvedAt: resolved ? Date.now() : null }
     set((s) => ({ notes: s.notes.map((n) => (n.id === id ? next : n)) }))
     persist(api.putNote(next))
+  },
+
+  updateNote: (id, patch) => {
+    const cur = get().notes.find((n) => n.id === id)
+    if (!cur) return
+    const next: Note = { ...cur, ...patch }
+    set((s) => ({ notes: s.notes.map((n) => (n.id === id ? next : n)) }))
+    persist(api.putNote(next))
+  },
+
+  restoreNote: (n) => {
+    set((s) => ({ notes: [...s.notes.filter((x) => x.id !== n.id), n] }))
+    persist(api.putNote(n))
   },
 
   addCheckpoint: (input) => {

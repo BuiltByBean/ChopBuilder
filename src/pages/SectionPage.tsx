@@ -8,6 +8,7 @@ import {
   playerName,
   type CheckStatus,
   type Checkpoint,
+  type Note,
   type Player,
 } from '../db/drumline'
 import {
@@ -22,7 +23,8 @@ import { usePrefs } from '../state/usePrefs'
 import { useToast } from '../state/useToast'
 import { Sheet } from '../components/Sheet'
 import { GateStar } from '../components/Drumline/common'
-import { Check } from '../components/icons'
+import { NoteSheet } from '../components/Drumline/NoteSheet'
+import { Check, Pencil } from '../components/icons'
 
 /**
  * Section View — the reason the app exists. Checkpoints down, players across,
@@ -304,6 +306,7 @@ function OpenNotes() {
   const players = useDrumline((s) => s.players)
   const setNoteResolved = useDrumline((s) => s.setNoteResolved)
   const [showResolved, setShowResolved] = useState(false)
+  const [editNote, setEditNote] = useState<Note | null>(null)
 
   const open = useMemo(() => notes.filter((n) => !n.resolved), [notes])
   const resolved = useMemo(
@@ -347,6 +350,14 @@ function OpenNotes() {
                 <div className="note-top">
                   {who(n)}
                   <button
+                    className="btn icon xs"
+                    onClick={() => setEditNote(n)}
+                    aria-label="Edit note"
+                    title="Edit"
+                  >
+                    <Pencil size={13} />
+                  </button>
+                  <button
                     className="btn icon xs resolve-btn"
                     onClick={() => setNoteResolved(n.id, true)}
                     aria-label="Resolve note"
@@ -375,6 +386,14 @@ function OpenNotes() {
                 {who(n)}
                 <span className={`note-tag tag-${n.tag === 'Win' ? 'win' : 'std'}`}>{n.tag}</span>
                 <button
+                  className="btn icon xs"
+                  onClick={() => setEditNote(n)}
+                  aria-label="Edit note"
+                  title="Edit"
+                >
+                  <Pencil size={13} />
+                </button>
+                <button
                   className="btn icon xs resolve-btn on"
                   onClick={() => setNoteResolved(n.id, false)}
                   aria-label="Reopen note"
@@ -388,6 +407,8 @@ function OpenNotes() {
           ))}
         </div>
       )}
+
+      {editNote && <NoteSheet edit={editNote} onClose={() => setEditNote(null)} />}
     </section>
   )
 }

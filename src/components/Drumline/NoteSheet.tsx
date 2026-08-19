@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { NOTE_TAGS, playerName, type NoteTag } from '../../db/drumline'
+import { NOTE_TAGS, playerName, type Note, type NoteTag } from '../../db/drumline'
 import {
   fmtDay,
   fromDateInput,
@@ -12,13 +12,17 @@ import { usePrefs } from '../../state/usePrefs'
 import { useToast } from '../../state/useToast'
 import { Sheet } from '../Sheet'
 import { PickerField } from '../PickerSheet'
-import { Mic } from '../icons'
+import { Mic, Trash } from '../icons'
 
 /**
  * The 25-seconds-between-reps capture surface. Open → field is focused →
  * type or speak → Save. Tags are a single-select row (your last tag comes
  * preselected, so a repeat note is type-then-save). Saving closes the sheet;
  * an undo toast covers mistakes. No confirmations, ever.
+ *
+ * Pass `edit` to reuse the same sheet for fixing an old note — everything
+ * becomes editable, including which player it belongs to, and Delete lives
+ * here too (undo toast, not a confirm).
  */
 
 // Minimal typings for the Web Speech API (not in lib.dom).
@@ -108,31 +112,38 @@ function readLastTag(): NoteTag | null {
 }
 
 export function NoteSheet({
-  playerId,
+  playerId = null,
   defaultCheckpointId = null,
+  edit,
   onClose,
 }: {
-  /** null → a section-wide note. */
-  playerId: string | null
+  /** null → a section-wide note. Ignored in edit mode. */
+  playerId?: string | null
   defaultCheckpointId?: string | null
+  /** Existing note to edit instead of capturing a new one. */
+  edit?: Note
   onClose: () => void
 }) {
   const players = useDrumline((s) => s.players)
   const checkpoints = useDrumline((s) => s.checkpoints)
   const addNote = useDrumline((s) => s.addNote)
   const removeNote = useDrumline((s) => s.removeNote)
+  const updateNote = useDrumline((s) => s.updateNote)
+  const restoreNote = useDrumline((s) => s.restoreNote)
   const rehearsalBpm = usePrefs((s) => s.rehearsalBpm)
   const show = useToast((s) => s.show)
 
-  const [body, setBody] = useState('')
-  const [tag, setTag] = useState<NoteTag | null>(readLastTag)
-  const [cpLink, setCpLink] = useState(defaultCheckpointId ?? '')
+  const [body, setBody] = useState(edit?.body ?? '')
+  const [tag, setTag] = useState<NoteTag | null>(edit ? edit.tag : readLastTag())
+  const [cpLink, setCpLink] = useState(edit ? (edit.checkpointId ?? '') : (defaultCheckpointId ?? ''))
   // For notes typed up after the fact — defaults to today, costs zero taps live.
-  const [noteDate, setNoteDate] = useState(() => toDateInput(Date.now()))
+  const [noteDate, setNoteDate] = useState(() => toDateInput(edit ? edit.createdAt : Date.now()))
+  // Edit mode can move a note to another player (or to the whole section).
+  const [notePlayer, setNotePlayer] = useState(edit ? (edit.playerId ?? '') : '')
   const areaRef = useRef<HTMLTextAreaElement>(null)
 
   const player = playerId ? players.find((p) => p.id === playerId) : null
-  const title = player ? playerName(player) : 'Section note'
+  const title = edit ? 'Edit note' : player ? playerName(player) : 'Section note'
 
   useEffect(() => {
     areaRef.current?.focus()
@@ -157,6 +168,21 @@ export function NoteSheet({
     // A changed date stamps the note at that day's local noon, so it sorts and
     // attaches to that day's session instead of "whenever I typed it up".
     const picked = noteDate ? fromDateInput(noteDate) : Date.now()
+
+    if (edit) {
+      const before = { ...edit }
+      updateNote(edit.id, {
+        body: trimmed,
+        tag,
+        checkpointId: cpLink || null,
+        playerId: notePlayer || null,
+        createdAt: sameLocalDay(picked, edit.createdAt) ? edit.createdAt : picked,
+      })
+      show('Note updated', { label: 'Undo', fn: () => updateNote(before.id, before) })
+      onClose()
+      return
+    }
+
     const backdated = !sameLocalDay(picked, Date.now())
     const note = addNote({
       playerId,
@@ -170,6 +196,14 @@ export function NoteSheet({
       label: 'Undo',
       fn: () => removeNote(note.id),
     })
+    onClose()
+  }
+
+  const del = () => {
+    if (!edit) return
+    const copy = { ...edit }
+    removeNote(edit.id)
+    show('Note deleted', { label: 'Undo', fn: () => restoreNote(copy) })
     onClose()
   }
 
@@ -194,11 +228,13 @@ export function NoteSheet({
     return groups
   })()
 
+  const metaBpm = edit ? edit.bpm : rehearsalBpm
+
   return (
     <Sheet
       title={title}
       onClose={onClose}
-      meta={rehearsalBpm ? <span className="bpm-stamp">@ {rehearsalBpm} BPM</span> : undefined}
+      meta={metaBpm ? <span className="bpm-stamp">@ {metaBpm} BPM</span> : undefined}
     >
       <div className="note-input-row">
         <textarea
@@ -236,6 +272,26 @@ export function NoteSheet({
         ))}
       </div>
 
+      {edit && (
+        <div className="note-cp">
+          <PickerField
+            id="note-player"
+            label="About"
+            title="Who is this note about?"
+            value={notePlayer}
+            groups={[
+              {
+                options: players
+                  .filter((p) => p.active || p.id === edit.playerId)
+                  .map((p) => ({ value: p.id, label: playerName(p), meta: p.instrument })),
+              },
+            ]}
+            onChange={setNotePlayer}
+            noneLabel="Whole section"
+          />
+        </div>
+      )}
+
       <div className="form-row note-cp">
         {phaseGroups.length > 0 && (
           <div className="grow">
@@ -264,8 +320,13 @@ export function NoteSheet({
       </div>
 
       <div className="sheet-actions note-save-row">
+        {edit && (
+          <button className="btn tall ghost danger note-delete" onClick={del}>
+            <Trash size={15} />
+          </button>
+        )}
         <button className="btn tall primary" disabled={!ready} onClick={save}>
-          {ready ? `Save — ${tag}` : !body.trim() ? 'Type or dictate first' : 'Pick a tag'}
+          {ready ? (edit ? 'Save changes' : `Save — ${tag}`) : !body.trim() ? 'Type or dictate first' : 'Pick a tag'}
         </button>
       </div>
     </Sheet>

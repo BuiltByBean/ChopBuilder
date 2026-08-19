@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { NOTE_TAGS, playerName, type NoteTag } from '../db/drumline'
+import { NOTE_TAGS, playerName, type Note, type NoteTag } from '../db/drumline'
 import { fmtDay, fmtTime, useDrumline } from '../state/useDrumline'
-import { Check } from '../components/icons'
+import { NoteSheet } from '../components/Drumline/NoteSheet'
+import { Check, Pencil } from '../components/icons'
 
 type Scope = 'open' | 'resolved' | 'all'
 
@@ -19,6 +20,7 @@ export function NotesPage() {
 
   const [scope, setScope] = useState<Scope>('open')
   const [tagFilter, setTagFilter] = useState<NoteTag | null>(null)
+  const [editNote, setEditNote] = useState<Note | null>(null)
 
   const byId = useMemo(() => new Map(players.map((p) => [p.id, p])), [players])
   const cpById = useMemo(() => new Map(checkpoints.map((c) => [c.id, c])), [checkpoints])
@@ -94,6 +96,14 @@ export function NotesPage() {
                   {n.bpm ? ` · ${n.bpm} BPM` : ''}
                 </span>
                 <button
+                  className="btn icon xs"
+                  onClick={() => setEditNote(n)}
+                  aria-label="Edit note"
+                  title="Edit"
+                >
+                  <Pencil size={13} />
+                </button>
+                <button
                   className={`btn icon xs resolve-btn${n.resolved ? ' on' : ''}`}
                   onClick={() => setNoteResolved(n.id, !n.resolved)}
                   aria-label={n.resolved ? 'Reopen note' : 'Resolve note'}
@@ -108,6 +118,8 @@ export function NotesPage() {
           )
         })}
       </div>
+
+      {editNote && <NoteSheet edit={editNote} onClose={() => setEditNote(null)} />}
     </div>
   )
 }

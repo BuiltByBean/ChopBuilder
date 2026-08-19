@@ -6,6 +6,7 @@ import {
   nextStatus,
   playerName,
   type Checkpoint,
+  type Note,
   type NoteTag,
   NOTE_TAGS,
 } from '../db/drumline'
@@ -47,6 +48,7 @@ export function PlayerPage() {
 
   const [passFor, setPassFor] = useState<Checkpoint | null>(null)
   const [noteOpen, setNoteOpen] = useState(false)
+  const [editNote, setEditNote] = useState<Note | null>(null)
   const [editOpen, setEditOpen] = useState(false)
   const [tagFilter, setTagFilter] = useState<NoteTag | null>(null)
   const [logOpen, setLogOpen] = useState(false)
@@ -221,6 +223,14 @@ export function PlayerPage() {
                   {n.bpm ? ` · ${n.bpm} BPM` : ''}
                 </span>
                 <button
+                  className="btn icon xs"
+                  onClick={() => setEditNote(n)}
+                  aria-label="Edit note"
+                  title="Edit"
+                >
+                  <Pencil size={13} />
+                </button>
+                <button
                   className={`btn icon xs resolve-btn${n.resolved ? ' on' : ''}`}
                   onClick={() => setNoteResolved(n.id, !n.resolved)}
                   aria-label={n.resolved ? 'Reopen note' : 'Resolve note'}
@@ -273,6 +283,7 @@ export function PlayerPage() {
         />
       )}
       {noteOpen && <NoteSheet playerId={player.id} onClose={() => setNoteOpen(false)} />}
+      {editNote && <NoteSheet edit={editNote} onClose={() => setEditNote(null)} />}
       {editOpen && (
         <PlayerFormSheet
           title={`Edit ${playerName(player)}`}
