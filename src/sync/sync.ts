@@ -20,9 +20,9 @@ export interface SyncRow {
 }
 
 interface SyncConfig {
-  enabled: boolean
   /** Server origin; '' = the site the app is served from. */
   url: string
+  /** Only needed if the server sets CHOP_KEY; blank for the keyless default. */
   key: string
 }
 
@@ -57,10 +57,9 @@ function writeJson(key: string, value: unknown) {
 
 let marks: Watermarks = readJson(WM_KEY, { since: 0, pushedAt: 0, lastSyncAt: 0 })
 
-export type SyncStatus = 'off' | 'idle' | 'syncing' | 'ok' | 'offline' | 'error' | 'noserver'
+export type SyncStatus = 'idle' | 'syncing' | 'ok' | 'offline' | 'error' | 'noserver'
 
 interface SyncState {
-  enabled: boolean
   url: string
   key: string
   status: SyncStatus
@@ -70,22 +69,23 @@ interface SyncState {
   setConfig: (patch: Partial<SyncConfig>) => void
 }
 
-const cfg0 = readJson<SyncConfig>(CFG_KEY, { enabled: false, url: '', key: '' })
+// Sync is always on — one person, several devices, zero setup. Old configs
+// may still carry an enabled flag; it's ignored.
+const cfg0 = readJson<SyncConfig>(CFG_KEY, { url: '', key: '' })
 
 export const useSync = create<SyncState>((set, get) => ({
-  enabled: cfg0.enabled,
   url: cfg0.url,
   key: cfg0.key,
-  status: cfg0.enabled ? 'idle' : 'off',
+  status: 'idle',
   lastSyncAt: marks.lastSyncAt,
   detail: '',
 
   setConfig: (patch) => {
-    const next = { enabled: get().enabled, url: get().url, key: get().key, ...patch }
+    const next = { url: get().url, key: get().key, ...patch }
     next.url = next.url.trim().replace(/\/+$/, '')
     writeJson(CFG_KEY, next)
-    set({ ...next, status: next.enabled ? 'idle' : 'off', detail: '' })
-    if (next.enabled) scheduleSync(200)
+    set({ ...next, status: 'idle', detail: '' })
+    scheduleSync(200)
   },
 }))
 
@@ -102,7 +102,6 @@ let syncing = false
 let queued = false
 
 export function scheduleSync(delay = 1500) {
-  if (!useSync.getState().enabled) return
   if (timer) clearTimeout(timer)
   timer = setTimeout(() => {
     timer = null
@@ -149,7 +148,6 @@ async function applyRow(r: SyncRow): Promise<boolean> {
 
 export async function syncNow(reason: string): Promise<void> {
   const s = useSync.getState()
-  if (!s.enabled) return
   if (!navigator.onLine) {
     useSync.setState({ status: 'offline', detail: '' })
     return
@@ -241,7 +239,6 @@ export function initSync() {
 }
 
 export function syncDetailLine(state: SyncState): string {
-  if (!state.enabled) return 'Off — this device only'
   switch (state.status) {
     case 'syncing':
       return 'Syncing…'
