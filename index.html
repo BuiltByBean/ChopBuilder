@@ -95,6 +95,7 @@
   <body>
     <div id="vv-probe" style="position:fixed;inset:0;visibility:hidden;pointer-events:none;z-index:-1"></div>
     <div id="sat-probe" style="position:fixed;top:0;left:0;width:1px;height:env(safe-area-inset-top,0px);visibility:hidden;pointer-events:none;z-index:-1"></div>
+    <div id="sab-probe" style="position:fixed;top:0;left:0;width:1px;height:env(safe-area-inset-bottom,0px);visibility:hidden;pointer-events:none;z-index:-1"></div>
     <script>
       /* Ported from the Flipping app — its battle-tested iOS standalone shell.
          Size the app shell to the TRUE bottom of the glass. Every iOS standalone
@@ -111,8 +112,19 @@
       ;(function () {
         var probe = document.getElementById('vv-probe')
         var satProbe = document.getElementById('sat-probe')
+        var sabProbe = document.getElementById('sab-probe')
         var lastKb = 0, lastH = 0, reserveUntil = 0
         var stableH = 0
+        // Status-bar height by logical screen height, for stale installs where
+        // iOS draws full-bleed but freezes env() at 0 (icon added before the
+        // apple metas). Dynamic-Island models report 59, notch models 47,
+        // home-button models 20; the home indicator is 34 on all notch/DI.
+        function insetTable() {
+          var H = Math.max(screen.height || 0, screen.width || 0)
+          if (H <= 736) return { sat: 20, sab: 0 }
+          if (H === 852 || H === 874 || H === 930 || H === 932 || H === 956) return { sat: 59, sab: 34 }
+          return { sat: 47, sab: 34 }
+        }
         function fieldFocused() {
           var ae = document.activeElement
           return !!ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)
@@ -158,21 +170,31 @@
             var shortfall = s - h
             if (s > h && shortfall <= 140) h = s
             // Stale-install fallback: an icon added BEFORE the apple metas has
-            // env(safe-area-inset-top) frozen at 0 while the webview still
-            // draws under the clock. When env reads 0 but the JS numbers fall
-            // short of the glass by chrome-sized slices, split that shortfall
-            // into status-bar (--sat) and home-indicator (--sab-fb) heights so
-            // the header and tab bar clear the system UI anyway. A healthy
-            // install reports env > 0 and the fallback stays off.
+            // env(safe-area-inset-*) frozen at 0 while the webview still draws
+            // full-bleed under the clock and home indicator. When env reads 0
+            // in standalone, supply the insets ourselves: from the measured
+            // glass shortfall when there is one, else from the device table
+            // (the full-bleed case reports NO shortfall — the probe already
+            // spans the glass, which is exactly why only env can be trusted on
+            // healthy installs and only the table on frozen ones).
             var envTop = satProbe ? satProbe.getBoundingClientRect().height : 0
-            if (envTop < 1 && !fieldFocused() && shortfall >= 20 && shortfall <= 140) {
-              var sab = shortfall >= 80 ? 34 : 0
-              var sat = Math.min(62, Math.max(20, shortfall - sab))
-              document.documentElement.style.setProperty('--sat', sat + 'px')
-              if (sab) document.documentElement.style.setProperty('--sab-fb', sab + 'px')
+            var root = document.documentElement
+            if (envTop < 1 && !fieldFocused()) {
+              var sat = 0, sab = 0
+              if (shortfall >= 20 && shortfall <= 140) {
+                sab = shortfall >= 80 ? 34 : 0
+                sat = Math.min(62, Math.max(20, shortfall - sab))
+              } else {
+                var t = insetTable()
+                sat = t.sat
+                sab = t.sab
+              }
+              root.style.setProperty('--sat', sat + 'px')
+              if (sab) root.style.setProperty('--sab-fb', sab + 'px')
+              else root.style.removeProperty('--sab-fb')
             } else if (envTop >= 1) {
-              document.documentElement.style.removeProperty('--sat')
-              document.documentElement.style.removeProperty('--sab-fb')
+              root.style.removeProperty('--sat')
+              root.style.removeProperty('--sab-fb')
             }
           } else {
             h = vv || ih || pr
@@ -197,6 +219,21 @@
             setTimeout(revealFocused, 60)
           } else if (Date.now() > reserveUntil) {
             setKb(0)
+          }
+          // Ground truth for the More → Diagnostics card — one screenshot of
+          // these numbers beats any amount of guessing about iOS behavior.
+          window.__shellDiag = {
+            standalone: standalone,
+            screen: (screen.width || 0) + 'x' + (screen.height || 0),
+            inner: window.innerWidth + 'x' + ih,
+            vvH: vv,
+            vvOffsetTop: (vvp && vvp.offsetTop) || 0,
+            probeH: Math.round(pr),
+            envTop: satProbe ? Math.round(satProbe.getBoundingClientRect().height) : -1,
+            envBottom: sabProbe ? Math.round(sabProbe.getBoundingClientRect().height) : -1,
+            appliedH: lastH,
+            kb: lastKb,
+            at: new Date().toTimeString().slice(0, 8)
           }
         }
         fit()

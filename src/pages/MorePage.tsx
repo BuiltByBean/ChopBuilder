@@ -121,6 +121,8 @@ export function MorePage() {
         </p>
       </section>
 
+      <DiagnosticsCard />
+
       {pinSheet && <PinSheet mode={pinSheet} onClose={() => setPinSheet(null)} />}
     </div>
   )
@@ -183,6 +185,46 @@ function SyncCard() {
           spellCheck={false}
         />
       </div>
+    </section>
+  )
+}
+
+/**
+ * Real numbers from the shell engine on THIS device — the anti-guesswork
+ * card. A screenshot of it carries everything needed to diagnose iOS
+ * viewport/safe-area behavior remotely.
+ */
+function DiagnosticsCard() {
+  const [tick, setTick] = useState(0)
+
+  const root = document.documentElement
+  const diag =
+    (window as unknown as { __shellDiag?: Record<string, string | number | boolean> })
+      .__shellDiag ?? {}
+  const nav = document.querySelector('.nav')
+  const rows: [string, string][] = [
+    ...Object.entries(diag).map(([k, v]) => [k, String(v)] as [string, string]),
+    ['--vvh', root.style.getPropertyValue('--vvh') || '(unset)'],
+    ['--sat', root.style.getPropertyValue('--sat') || '(unset)'],
+    ['--sab-fb', root.style.getPropertyValue('--sab-fb') || '(unset)'],
+    ['nav padTop', nav ? getComputedStyle(nav).paddingTop : 'n/a'],
+    ['ua', navigator.userAgent.replace(/Mozilla\/5\.0 \(/, '(').slice(0, 64)],
+  ]
+
+  return (
+    <section className="pref-block card">
+      <h4 className="section-label">Diagnostics</h4>
+      <div className="diag-list" key={tick}>
+        {rows.map(([k, v]) => (
+          <p key={k} className="diag-row">
+            <span>{k}</span>
+            {v}
+          </p>
+        ))}
+      </div>
+      <button className="btn sm ghost" onClick={() => setTick((t) => t + 1)}>
+        Refresh
+      </button>
     </section>
   )
 }
