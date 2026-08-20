@@ -30,6 +30,8 @@ function pdfjsAssets(): Plugin {
 export default defineConfig({
   // Relative base so the built site works from a subfolder as well as a domain root.
   base: './',
+  // Stamped into Diagnostics so a phone screenshot proves which build it runs.
+  define: { __BUILD_TIME__: JSON.stringify(new Date().toISOString().slice(0, 16) + 'Z') },
   plugins: [react(), pdfjsAssets()],
   // PORT lets the dev-server launcher pick a free port when 5273 is taken.
   server: { port: Number(process.env.PORT) || 5273 },

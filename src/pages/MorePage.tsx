@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useDrumline } from '../state/useDrumline'
 import { usePrefs } from '../state/usePrefs'
 import { useToast } from '../state/useToast'
 import { syncDetailLine, useSync } from '../sync/sync'
@@ -135,6 +136,7 @@ export function MorePage() {
 function DiagnosticsCard() {
   const [tick, setTick] = useState(0)
   const sync = useSync()
+  const playerCount = useDrumline((s) => s.players.length)
 
   const root = document.documentElement
   const diag =
@@ -142,7 +144,10 @@ function DiagnosticsCard() {
       .__shellDiag ?? {}
   const nav = document.querySelector('.nav')
   const rows: [string, string][] = [
+    ['build', __BUILD_TIME__],
     ['sync', syncDetailLine(sync)],
+    ['players', String(playerCount)],
+    ['db blocked', String(!!(window as { __dbBlocked?: boolean }).__dbBlocked)],
     ...Object.entries(diag).map(([k, v]) => [k, String(v)] as [string, string]),
     ['--vvh', root.style.getPropertyValue('--vvh') || '(unset)'],
     ['--sat', root.style.getPropertyValue('--sat') || '(unset)'],

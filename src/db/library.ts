@@ -143,6 +143,18 @@ export const db = () => {
           d.createObjectStore('meta', { keyPath: 'key' })
         }
       },
+      // A newer build in another tab/window wants to upgrade the schema and
+      // this stale page is the blocker — reload so it comes back on the new
+      // code (and the new version) instead of deadlocking the other context.
+      blocking() {
+        location.reload()
+      },
+      // The mirror case: an old page elsewhere holds the database open so OUR
+      // upgrade can't run. Nothing to do but surface it — Diagnostics shows
+      // the flag, and the app looks "empty" until that other page closes.
+      blocked() {
+        ;(window as { __dbBlocked?: boolean }).__dbBlocked = true
+      },
     })
   }
   return dbp
