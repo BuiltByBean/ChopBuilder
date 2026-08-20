@@ -7,7 +7,9 @@
  * pdf.js's standard fonts and cmaps are fetched on demand and get cached the
  * first time a score needs them.
  */
-const CACHE = 'chopbuilder-v3'
+// v4: bumped to force the update toast onto devices stuck on pre-IDB-v5 code
+// (changed worker bytes → install → skipWaiting/claim → controllerchange toast).
+const CACHE = 'chopbuilder-v4'
 
 // Seed the shell plus install-surface files (manifest, icons) so a
 // hard-offline launch — and the home-screen icon — always resolve.
