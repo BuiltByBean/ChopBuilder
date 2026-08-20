@@ -39,19 +39,8 @@ export default function App() {
     if (!loaded) void load()
     void loadDrumline()
     initSync()
-    // Hard portrait lock where the platform allows it (Android standalone);
-    // iOS rejects — the #rotate-lock CSS guard in index.html covers it there.
-    const standalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      (navigator as unknown as { standalone?: boolean }).standalone === true
-    if (standalone) {
-      const so = screen.orientation as unknown as { lock?: (o: string) => Promise<void> }
-      try {
-        void so.lock?.('portrait').catch(() => {})
-      } catch {
-        /* not supported */
-      }
-    }
+    // Viewport sizing, keyboard handling, and the portrait lock all live in
+    // the inline shell script in index.html (ported from the Flipping app).
     // Browsers gate audio behind a gesture; warming the context on the first
     // interaction means pressing play later starts instantly.
     const warm = () => metronome.unlock()
@@ -120,7 +109,6 @@ export default function App() {
       <ToastHost />
       <GlobalKeys />
       <KeepAwake />
-      <KeyboardWatch />
       <RelockWatch />
     </div>
   )
@@ -286,41 +274,6 @@ function KeepAwake() {
     }
   }, [active])
 
-  return null
-}
-
-/**
- * iOS re-parents fixed-bottom chrome onto the visual viewport when the
- * keyboard opens, floating it mid-screen. When the viewport shrinks past the
- * keyboard threshold we set `kb-open` on <html> and CSS hides the tab bar.
- * The activeElement check is the backstop against the class latching on.
- */
-function KeyboardWatch() {
-  useEffect(() => {
-    const vv = window.visualViewport
-    if (!vv) return
-    const check = () => {
-      const typing =
-        document.activeElement instanceof HTMLElement &&
-        (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName) ||
-          document.activeElement.isContentEditable)
-      const shrunk = window.innerHeight - vv.height > 150
-      document.documentElement.classList.toggle('kb-open', typing && shrunk)
-    }
-    const checkSoon = () => setTimeout(check, 60)
-    vv.addEventListener('resize', check)
-    window.addEventListener('resize', check)
-    document.addEventListener('focusin', check)
-    document.addEventListener('focusout', checkSoon)
-    check()
-    return () => {
-      vv.removeEventListener('resize', check)
-      window.removeEventListener('resize', check)
-      document.removeEventListener('focusin', check)
-      document.removeEventListener('focusout', checkSoon)
-      document.documentElement.classList.remove('kb-open')
-    }
-  }, [])
   return null
 }
 

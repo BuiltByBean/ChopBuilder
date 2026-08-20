@@ -34,32 +34,41 @@
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
-html,
-body,
-#root {
+/* Flipping's shell model, verbatim: the DOCUMENT never scrolls, and it's
+   overflow CLIP, not hidden — hidden is still scrollable programmatically and
+   iOS's keyboard pan is exactly that kind of scroll; a pan left behind strands
+   the whole shell shifted up with its header under the status bar and a dead
+   band beneath the app. clip cannot move. NO viewport units for the shell
+   height — iOS standalone mis-computes dvh/vh; --vvh is measured from
+   visualViewport by the inline script in index.html. Only .page, .sheet-body
+   and other inner panes ever scroll. */
+html {
   height: 100%;
-}
-
-/* iOS Safari's toolbars grow/shrink the visible area; dvh tracks it exactly,
-   so the tab bar sits on the true bottom instead of behind the toolbar or
-   above a dead gap. Older browsers keep the % chain. */
-@supports (height: 100dvh) {
-  html,
-  body,
-  #root {
-    height: 100dvh;
-  }
+  overflow: clip;
+  overscroll-behavior: none;
 }
 
 body {
   margin: 0;
+  height: 100%;
+  height: var(--vvh, 100%);
+  overflow: clip;
+  /* Overlays (sheets, toasts, lock) anchor absolute to the shell — never
+     position:fixed, which mis-anchors on iOS standalone. */
+  position: relative;
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
   -webkit-font-smoothing: antialiased;
   overscroll-behavior: none;
+}
+
+#root {
+  height: 100%;
 }
 
 button,
@@ -1377,7 +1386,7 @@ input[type='range']:disabled {
 /* ------------------------------------------------------------- overlays -- */
 
 .modal-backdrop {
-  position: fixed;
+  position: absolute;
   inset: 0;
   background: rgba(4, 6, 10, 0.72);
   backdrop-filter: blur(3px);
@@ -1446,7 +1455,7 @@ input[type='range']:disabled {
 }
 
 .toast {
-  position: fixed;
+  position: absolute;
   bottom: 22px;
   left: 50%;
   transform: translateX(-50%);
@@ -1762,18 +1771,10 @@ html[data-mode='outdoor'] .beat.lit[data-state='accent'] {
   animation: none;
 }
 
-/* iOS app feel: no tap flash, no rotated-text inflation, no double-tap zoom
-   on controls. Scrub/press targets keep their own touch-action overrides. */
+/* iOS app feel: no rotated-text inflation. (Tap-highlight and touch-action
+   live on the universal selector up top; scrub/press targets override.) */
 html {
   -webkit-text-size-adjust: 100%;
-}
-body {
-  -webkit-tap-highlight-color: transparent;
-}
-button,
-a,
-label.switch {
-  touch-action: manipulation;
 }
 .page {
   scrollbar-gutter: stable;
@@ -2037,7 +2038,8 @@ html[data-mode='outdoor'] .nav {
 /* Bottom sheets — the capture surface. Thumb reach on phones, centered
    dialog on desktop. */
 .sheet-wrap {
-  position: fixed;
+  /* absolute, anchored to the body shell — never fixed (iOS standalone). */
+  position: absolute;
   inset: 0;
   z-index: 140;
 }
@@ -2098,9 +2100,11 @@ html[data-mode='outdoor'] .nav {
   flex: none;
 }
 .sheet-body {
-  padding: 10px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+  /* --kb reserves the keyboard's space before iOS pans for it. */
+  padding: 10px 16px calc(20px + env(safe-area-inset-bottom, 0px) + var(--kb, 0px));
   overflow-y: auto;
   min-height: 0;
+  overscroll-behavior-y: contain;
 }
 .sheet-sub {
   margin: 0 0 12px;
@@ -3334,7 +3338,7 @@ html[data-mode='outdoor'] .hm-cell.st-bg-not_started {
 
 /* Lock screen */
 .lock-screen {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 500;
   display: grid;

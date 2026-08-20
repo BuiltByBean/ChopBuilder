@@ -28,7 +28,7 @@
         background: #0a0b0d;
       }
       #splash {
-        position: fixed;
+        position: absolute;
         inset: 0;
         z-index: 9999;
         display: grid;
@@ -92,6 +92,153 @@
     </script>
   </head>
   <body>
+    <div id="vv-probe" style="position:fixed;inset:0;visibility:hidden;pointer-events:none;z-index:-1"></div>
+    <script>
+      /* Ported from the Flipping app — its battle-tested iOS standalone shell.
+         Size the app shell to the TRUE bottom of the glass. Every iOS standalone
+         number lies a little: dvh reserves phantom Safari chrome, and
+         innerHeight/visualViewport under-report by status-bar/home-indicator
+         slices. So: take the tallest honest measurement (a fixed inset-0 probe =
+         where fixed elements really bottom out, plus the JS viewport numbers),
+         and in installed-app mode snap to the physical screen height when the JS
+         numbers fall only a hair short of it. Re-measures on rotate/resize.
+         Also owns the keyboard: remember its height, reserve the space via --kb
+         BEFORE WebKit pans, reveal the focused field by scrolling the sheet's
+         own scroller, and un-pan the document at rest so the shell can never be
+         left shifted with its header under the status bar. */
+      ;(function () {
+        var probe = document.getElementById('vv-probe')
+        var lastKb = 0, lastH = 0, reserveUntil = 0
+        var stableH = 0
+        function fieldFocused() {
+          var ae = document.activeElement
+          return !!ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)
+        }
+        function visBand() {
+          var vvp = window.visualViewport
+          if (!vvp) return { top: 0, bottom: window.innerHeight }
+          return { top: vvp.offsetTop, bottom: vvp.offsetTop + vvp.height }
+        }
+        var kbEst = parseInt(localStorage.getItem('chopbuilder.kbh') || '300', 10) || 300
+        function setKb(px) {
+          if (px === lastKb) return
+          lastKb = px
+          document.documentElement.style.setProperty('--kb', px + 'px')
+          // Bottom tab bar hides while the keyboard is up (LM-3).
+          document.documentElement.classList.toggle('kb-open', px > 0)
+        }
+        function revealFocused() {
+          var ae = document.activeElement
+          if (!ae || (ae.tagName !== 'INPUT' && ae.tagName !== 'TEXTAREA')) return
+          var sb = ae.closest ? ae.closest('.sheet-body') : null
+          if (!sb) return
+          var band = visBand()
+          var r = ae.getBoundingClientRect()
+          if (r.bottom > band.bottom - 14) sb.scrollTop += r.bottom - (band.bottom - 14)
+          else if (r.top < band.top + 58) sb.scrollTop -= band.top + 58 - r.top
+        }
+        function fit() {
+          var vvp = window.visualViewport
+          var vv = (vvp && vvp.height) || 0
+          var ih = window.innerHeight || 0
+          var pr = probe ? probe.getBoundingClientRect().height : 0
+          var standalone =
+            (window.matchMedia && matchMedia('(display-mode: standalone)').matches) ||
+            window.navigator.standalone === true
+          var h
+          if (standalone) {
+            h = Math.max(pr, ih, vv)
+            var portrait = !window.matchMedia || matchMedia('(orientation: portrait)').matches
+            var s = portrait
+              ? Math.max(screen.height || 0, screen.width || 0)
+              : Math.min(screen.height || 0, screen.width || 0)
+            if (s > h && s - h <= 140) h = s
+          } else {
+            h = vv || ih || pr
+          }
+          if (h && h > 250) {
+            h = Math.round(h)
+            if (stableH && h < stableH - 60 && (fieldFocused() || Date.now() < reserveUntil)) {
+              lastH = stableH
+            } else {
+              stableH = lastH = h
+              document.documentElement.style.setProperty('--vvh', h + 'px')
+            }
+          }
+          var kb = 0
+          if (vvp && lastH) kb = Math.max(0, Math.round(lastH - vv - (vvp.offsetTop || 0)))
+          if (kb < 140) kb = 0
+          if (kb >= 140) {
+            kbEst = kb
+            try { localStorage.setItem('chopbuilder.kbh', String(kb)) } catch (e) {}
+            setKb(kb)
+            if (vvp && vvp.offsetTop > 0) window.scrollTo(0, 0)
+            setTimeout(revealFocused, 60)
+          } else if (Date.now() > reserveUntil) {
+            setKb(0)
+          }
+        }
+        fit()
+        if (window.visualViewport) window.visualViewport.addEventListener('resize', fit)
+        window.addEventListener('resize', fit)
+        window.addEventListener('orientationchange', function () {
+          stableH = 0
+          setTimeout(fit, 250)
+        })
+        window.addEventListener('pageshow', fit)
+        window.addEventListener('focusin', function (e) {
+          var t = e.target
+          if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA') &&
+              t.closest && t.closest('.sheet-body') && 'ontouchstart' in window) {
+            reserveUntil = Date.now() + 1200
+            setKb(kbEst)
+            setTimeout(revealFocused, 30)
+          } else {
+            setTimeout(fit, 120)
+          }
+        })
+        window.addEventListener('focusout', function () {
+          reserveUntil = 0
+          unpan()
+          setTimeout(function () { unpan(); fit() }, 250)
+          setTimeout(function () { unpan(); fit() }, 600)
+        })
+        // iOS scrolls the BODY to reveal fields (window.scrollY reads 0 the
+        // whole time); a pan left behind strands the shell under the status bar.
+        function unpan() {
+          if (window.scrollY || window.pageYOffset) window.scrollTo(0, 0)
+          if (document.body.scrollTop) document.body.scrollTop = 0
+          if (document.documentElement.scrollTop) document.documentElement.scrollTop = 0
+        }
+        document.addEventListener('scroll', function (e) {
+          var t = e.target
+          if (t !== document && t !== document.body && t !== document.documentElement) return
+          if (fieldFocused() || Date.now() < reserveUntil) return
+          unpan()
+        }, true)
+
+        setTimeout(fit, 60); setTimeout(fit, 400) // iOS settles the viewport late on cold launch
+
+        // Hard portrait lock where the platform allows it (Android standalone);
+        // iOS rejects — the #rotate-lock CSS guard covers it there.
+        var standaloneNow =
+          (window.matchMedia && matchMedia('(display-mode: standalone)').matches) ||
+          window.navigator.standalone === true
+        if (standaloneNow && screen.orientation && screen.orientation.lock) {
+          try { screen.orientation.lock('portrait').catch(function () {}) } catch (e) {}
+        }
+
+        // Real-app feel: no pinch zoom, no double-tap zoom.
+        document.addEventListener('gesturestart', function (e) { e.preventDefault() })
+        document.addEventListener('gesturechange', function (e) { e.preventDefault() })
+        document.addEventListener('touchmove', function (e) {
+          if (e.scale !== undefined && e.scale !== 1) e.preventDefault()
+        }, { passive: false })
+        if ('ontouchstart' in window) {
+          document.addEventListener('dblclick', function (e) { e.preventDefault() })
+        }
+      })()
+    </script>
     <div id="splash" aria-hidden="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
         <path d="M9.2 3.5h5.6l4.2 17H5L9.2 3.5Z" />
