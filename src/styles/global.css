@@ -42,6 +42,17 @@ body,
   height: 100%;
 }
 
+/* iOS Safari's toolbars grow/shrink the visible area; dvh tracks it exactly,
+   so the tab bar sits on the true bottom instead of behind the toolbar or
+   above a dead gap. Older browsers keep the % chain. */
+@supports (height: 100dvh) {
+  html,
+  body,
+  #root {
+    height: 100dvh;
+  }
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -1850,6 +1861,7 @@ html[data-mode='outdoor'] .nav {
 .page-head {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 14px;
 }
@@ -2672,6 +2684,11 @@ html[data-mode='outdoor'] .nav {
   font-size: 11px;
   color: var(--text-faint);
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
 }
 .note-player {
   font-size: 12.5px;
@@ -2759,10 +2776,16 @@ html[data-mode='outdoor'] .nav {
   max-height: 72vh;
   overscroll-behavior: contain;
 }
+/* border-spacing would leave transparent gaps in the sticky first column and
+   header row — scrolling cells show through them. Zero spacing + per-cell
+   padding keeps the visual gaps while the sticky chrome tiles edge-to-edge. */
 .heatmap {
   border-collapse: separate;
-  border-spacing: 3px;
+  border-spacing: 0;
   padding: 2px 6px 6px 2px;
+}
+.heatmap td {
+  padding: 1.5px;
 }
 .hm-corner {
   position: sticky;
@@ -2776,7 +2799,7 @@ html[data-mode='outdoor'] .nav {
   top: 0;
   z-index: 3;
   background: var(--panel);
-  padding: 6px 0 4px;
+  padding: 6px 1.5px 4px;
   vertical-align: bottom;
 }
 .hm-player {

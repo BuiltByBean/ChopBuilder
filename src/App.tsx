@@ -39,6 +39,19 @@ export default function App() {
     if (!loaded) void load()
     void loadDrumline()
     initSync()
+    // Hard portrait lock where the platform allows it (Android standalone);
+    // iOS rejects — the #rotate-lock CSS guard in index.html covers it there.
+    const standalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (navigator as unknown as { standalone?: boolean }).standalone === true
+    if (standalone) {
+      const so = screen.orientation as unknown as { lock?: (o: string) => Promise<void> }
+      try {
+        void so.lock?.('portrait').catch(() => {})
+      } catch {
+        /* not supported */
+      }
+    }
     // Browsers gate audio behind a gesture; warming the context on the first
     // interaction means pressing play later starts instantly.
     const warm = () => metronome.unlock()

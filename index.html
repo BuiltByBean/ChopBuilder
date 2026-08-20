@@ -48,6 +48,41 @@
         opacity: 0;
         pointer-events: none;
       }
+      /* Portrait-only on phones: iOS ignores the manifest's orientation lock,
+         so landscape gets a full-screen "rotate back" guard instead of a
+         broken layout. Desktop (fine pointer) is never affected. */
+      #rotate-lock {
+        display: none;
+      }
+      @media (orientation: landscape) and (pointer: coarse) and (max-width: 999px) {
+        #rotate-lock {
+          display: flex;
+          position: fixed;
+          inset: 0;
+          z-index: 10000;
+          background: #0a0b0d;
+          color: #e4e5e8;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          text-align: center;
+          padding: 20px;
+          font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        }
+        #rotate-lock svg {
+          width: 44px;
+          height: 44px;
+          color: #c9954a;
+        }
+        #rotate-lock b {
+          font-size: 18px;
+        }
+        #rotate-lock small {
+          color: #979aa1;
+          font-size: 13.5px;
+        }
+      }
     </style>
     <script>
       try {
@@ -63,6 +98,14 @@
         <path d="M6.6 14.5h10.8" />
         <path d="M12 19.5 17.5 7" />
       </svg>
+    </div>
+    <div id="rotate-lock" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="7" y="3" width="10" height="18" rx="2.2" />
+        <path d="M11 18.5h2" />
+      </svg>
+      <b>Portrait only</b>
+      <small>Rotate your phone back to keep working the line.</small>
     </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
