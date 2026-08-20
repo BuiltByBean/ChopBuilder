@@ -7,6 +7,7 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
     <meta name="theme-color" content="#0a0b0d" />
+    <meta name="format-detection" content="telephone=no" />
     <title>ChopBuilder — Drumline Tracker &amp; Metronome</title>
     <meta name="description" content="Offline-first drumline progress tracker — player checkpoints, rehearsal notes, section heatmap — plus a precision metronome up to 300 BPM and a sheet-music library." />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
@@ -93,6 +94,7 @@
   </head>
   <body>
     <div id="vv-probe" style="position:fixed;inset:0;visibility:hidden;pointer-events:none;z-index:-1"></div>
+    <div id="sat-probe" style="position:fixed;top:0;left:0;width:1px;height:env(safe-area-inset-top,0px);visibility:hidden;pointer-events:none;z-index:-1"></div>
     <script>
       /* Ported from the Flipping app — its battle-tested iOS standalone shell.
          Size the app shell to the TRUE bottom of the glass. Every iOS standalone
@@ -108,6 +110,7 @@
          left shifted with its header under the status bar. */
       ;(function () {
         var probe = document.getElementById('vv-probe')
+        var satProbe = document.getElementById('sat-probe')
         var lastKb = 0, lastH = 0, reserveUntil = 0
         var stableH = 0
         function fieldFocused() {
@@ -152,7 +155,25 @@
             var s = portrait
               ? Math.max(screen.height || 0, screen.width || 0)
               : Math.min(screen.height || 0, screen.width || 0)
-            if (s > h && s - h <= 140) h = s
+            var shortfall = s - h
+            if (s > h && shortfall <= 140) h = s
+            // Stale-install fallback: an icon added BEFORE the apple metas has
+            // env(safe-area-inset-top) frozen at 0 while the webview still
+            // draws under the clock. When env reads 0 but the JS numbers fall
+            // short of the glass by chrome-sized slices, split that shortfall
+            // into status-bar (--sat) and home-indicator (--sab-fb) heights so
+            // the header and tab bar clear the system UI anyway. A healthy
+            // install reports env > 0 and the fallback stays off.
+            var envTop = satProbe ? satProbe.getBoundingClientRect().height : 0
+            if (envTop < 1 && !fieldFocused() && shortfall >= 20 && shortfall <= 140) {
+              var sab = shortfall >= 80 ? 34 : 0
+              var sat = Math.min(62, Math.max(20, shortfall - sab))
+              document.documentElement.style.setProperty('--sat', sat + 'px')
+              if (sab) document.documentElement.style.setProperty('--sab-fb', sab + 'px')
+            } else if (envTop >= 1) {
+              document.documentElement.style.removeProperty('--sat')
+              document.documentElement.style.removeProperty('--sab-fb')
+            }
           } else {
             h = vv || ih || pr
           }

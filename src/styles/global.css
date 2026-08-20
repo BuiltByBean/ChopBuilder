@@ -1785,7 +1785,9 @@ html {
 .nav {
   height: auto;
   min-height: var(--nav-h);
-  padding-top: env(safe-area-inset-top, 0px);
+  /* --sat is the JS-measured fallback for stale installs where iOS reports
+     env(safe-area-inset-top) as 0 while still drawing under the status bar. */
+  padding-top: var(--sat, env(safe-area-inset-top, 0px));
   padding-left: max(18px, env(safe-area-inset-left, 0px));
   padding-right: max(18px, env(safe-area-inset-right, 0px));
 }
@@ -1795,7 +1797,7 @@ html {
 html[data-mode='outdoor'] .nav {
   padding-top: 0;
   border-top: 0 solid #0a0b0d;
-  border-top-width: env(safe-area-inset-top, 0px);
+  border-top-width: var(--sat, env(safe-area-inset-top, 0px));
 }
 
 /* One-time iOS "Add to Home Screen" pointer — a flex row above the tab bar,
@@ -2056,7 +2058,7 @@ html[data-mode='outdoor'] .nav {
   bottom: 0;
   margin: 0 auto;
   max-width: 600px;
-  max-height: calc(100% - env(safe-area-inset-top, 0px) - 26px);
+  max-height: calc(100% - var(--sat, env(safe-area-inset-top, 0px)) - 26px);
   display: flex;
   flex-direction: column;
   background: var(--panel);
@@ -2101,7 +2103,7 @@ html[data-mode='outdoor'] .nav {
 }
 .sheet-body {
   /* --kb reserves the keyboard's space before iOS pans for it. */
-  padding: 10px 16px calc(20px + env(safe-area-inset-bottom, 0px) + var(--kb, 0px));
+  padding: 10px 16px calc(20px + var(--sab-fb, env(safe-area-inset-bottom, 0px)) + var(--kb, 0px));
   overflow-y: auto;
   min-height: 0;
   overscroll-behavior-y: contain;
@@ -3447,7 +3449,8 @@ html[data-mode='outdoor'] .hm-cell.st-bg-not_started {
     gap: 2px;
     border-top: 1px solid var(--line);
     background: var(--bg-2);
-    padding: 4px max(6px, env(safe-area-inset-right, 0px)) calc(4px + env(safe-area-inset-bottom, 0px))
+    padding: 4px max(6px, env(safe-area-inset-right, 0px))
+      calc(4px + var(--sab-fb, env(safe-area-inset-bottom, 0px)))
       max(6px, env(safe-area-inset-left, 0px));
     z-index: 40;
   }
@@ -3484,7 +3487,7 @@ html[data-mode='outdoor'] .hm-cell.st-bg-not_started {
     font-size: 16px;
   }
   .toast {
-    bottom: calc(var(--tab-h) + 14px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(var(--tab-h) + 14px + var(--sab-fb, env(safe-area-inset-bottom, 0px)));
   }
   html.kb-open .toast {
     bottom: 18px;
