@@ -186,18 +186,12 @@ button {
   flex: 1;
 }
 
-/* Compact always-visible transport in the header. */
+/* Compact always-visible transport in the header — bare bpm + play button,
+   no chrome of its own. */
 .mini-transport {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 5px 6px 5px 12px;
-  border: 1px solid var(--line);
-  border-radius: 99px;
-  background: var(--panel);
-}
-.mini-transport.on {
-  border-color: var(--accent-line);
 }
 .mini-bpm {
   font-size: 13px;

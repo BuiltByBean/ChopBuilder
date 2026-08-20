@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { usePrefs } from '../state/usePrefs'
 import { useToast } from '../state/useToast'
-import { syncDetailLine, syncNow, useSync } from '../sync/sync'
+import { syncDetailLine, useSync } from '../sync/sync'
 import { Sheet } from '../components/Sheet'
 import {
   AudioIcon,
@@ -78,8 +78,6 @@ export function MorePage() {
         </Link>
       </div>
 
-      <SyncCard />
-
       <section className="pref-block card">
         <h4 className="section-label">Display</h4>
         <label className="switch pref-row">
@@ -116,8 +114,9 @@ export function MorePage() {
       <section className="pref-block card">
         <h4 className="section-label">Privacy</h4>
         <p className="pref-note">
-          First name + last initial only. No photos of students. Recordings and notes never leave
-          this device — the manual JSON export is the only way data moves anywhere.
+          First name + last initial only. No photos of students. Roster, checkpoints, notes and
+          sessions sync automatically to your private database so every device shows the same
+          line. Recordings and the music library never leave the device that captured them.
         </p>
       </section>
 
@@ -129,73 +128,13 @@ export function MorePage() {
 }
 
 /**
- * Sync is automatic — one owner, several devices. This card is the status
- * surface plus the rarely-needed knobs (pointing a dev copy at the live
- * server, or a key if the server ever sets one).
- */
-function SyncCard() {
-  const sync = useSync()
-  const setConfig = useSync((s) => s.setConfig)
-  const [url, setUrl] = useState(sync.url)
-  const [key, setKey] = useState(sync.key)
-
-  const dot =
-    sync.status === 'ok' ? 'ok' : sync.status === 'error' || sync.status === 'noserver' ? 'bad' : 'dim'
-
-  return (
-    <section className="pref-block card">
-      <h4 className="section-label">Sync</h4>
-      <p className="pref-note">
-        Automatic. Players, checkpoints, statuses, notes and sessions mirror through the sync
-        server, so your PC and phone show the same data. Recordings and the music library stay on
-        the device that captured them. Newest edit wins when two devices disagree.
-      </p>
-      <div className="sync-status-row">
-        <span className={`sync-dot ${dot}`} aria-hidden="true" />
-        <span className="sync-status">{syncDetailLine(sync)}</span>
-        <button className="btn sm" onClick={() => void syncNow('manual')}>
-          Sync now
-        </button>
-      </div>
-      <div className="field">
-        <label htmlFor="sync-url">Server (blank = this site)</label>
-        <input
-          id="sync-url"
-          className="input"
-          placeholder="https://chopbuilder-production-40a9.up.railway.app"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          onBlur={() => setConfig({ url })}
-          autoCapitalize="off"
-          autoCorrect="off"
-          spellCheck={false}
-        />
-      </div>
-      <div className="field">
-        <label htmlFor="sync-key">Sync key (only if the server requires one)</label>
-        <input
-          id="sync-key"
-          className="input"
-          placeholder="none"
-          value={key}
-          onChange={(e) => setKey(e.target.value)}
-          onBlur={() => setConfig({ key })}
-          autoCapitalize="off"
-          autoCorrect="off"
-          spellCheck={false}
-        />
-      </div>
-    </section>
-  )
-}
-
-/**
  * Real numbers from the shell engine on THIS device — the anti-guesswork
  * card. A screenshot of it carries everything needed to diagnose iOS
  * viewport/safe-area behavior remotely.
  */
 function DiagnosticsCard() {
   const [tick, setTick] = useState(0)
+  const sync = useSync()
 
   const root = document.documentElement
   const diag =
@@ -203,6 +142,7 @@ function DiagnosticsCard() {
       .__shellDiag ?? {}
   const nav = document.querySelector('.nav')
   const rows: [string, string][] = [
+    ['sync', syncDetailLine(sync)],
     ...Object.entries(diag).map(([k, v]) => [k, String(v)] as [string, string]),
     ['--vvh', root.style.getPropertyValue('--vvh') || '(unset)'],
     ['--sat', root.style.getPropertyValue('--sat') || '(unset)'],

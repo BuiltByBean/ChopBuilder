@@ -35,8 +35,8 @@ interface Watermarks {
 }
 
 const CFG_KEY = 'chopbuilder:syncConfig'
-const WM_KEY = 'chopbuilder:syncMarks'
 const PUSH_CHUNK = 800
+const MARKS_ID = 'syncMarks'
 
 function readJson<T>(key: string, fallback: T): T {
   try {
@@ -55,7 +55,34 @@ function writeJson(key: string, value: unknown) {
   }
 }
 
-let marks: Watermarks = readJson(WM_KEY, { since: 0, pushedAt: 0, lastSyncAt: 0 })
+/**
+ * Watermarks live in the SAME IndexedDB as the data — never localStorage.
+ * iOS can evict one storage area without the other; a surviving "synced up to
+ * T" marker over an emptied database made the app sit on a blank roster while
+ * the server held everything. Marks that die with the data mean an emptied
+ * device restarts from since=0 and pulls it all back. (Old localStorage marks
+ * are intentionally abandoned, forcing one full re-pull on every device.)
+ */
+let marks: Watermarks | null = null
+
+async function loadMarks(): Promise<Watermarks> {
+  if (marks) return marks
+  const d = await db()
+  const row = (await d.get('meta', MARKS_ID)) as { value?: Partial<Watermarks> } | undefined
+  marks = { since: 0, pushedAt: 0, lastSyncAt: 0, ...(row?.value ?? {}) }
+  try {
+    localStorage.removeItem('chopbuilder:syncMarks')
+  } catch {
+    /* ignore */
+  }
+  return marks
+}
+
+async function saveMarks(next: Watermarks) {
+  marks = next
+  const d = await db()
+  await d.put('meta', { key: MARKS_ID, value: next })
+}
 
 export type SyncStatus = 'idle' | 'syncing' | 'ok' | 'offline' | 'error' | 'noserver'
 
@@ -77,7 +104,7 @@ export const useSync = create<SyncState>((set, get) => ({
   url: cfg0.url,
   key: cfg0.key,
   status: 'idle',
-  lastSyncAt: marks.lastSyncAt,
+  lastSyncAt: 0,
   detail: '',
 
   setConfig: (patch) => {
@@ -92,9 +119,9 @@ export const useSync = create<SyncState>((set, get) => ({
 /** After a backup import the device's contents changed wholesale — push and
  * pull everything again and let last-write-wins sort out the merge. */
 export function resetSyncWatermarks() {
-  marks = { since: 0, pushedAt: 0, lastSyncAt: marks.lastSyncAt }
-  writeJson(WM_KEY, marks)
-  scheduleSync(200)
+  void saveMarks({ since: 0, pushedAt: 0, lastSyncAt: marks?.lastSyncAt ?? 0 }).then(() =>
+    scheduleSync(200),
+  )
 }
 
 let timer: ReturnType<typeof setTimeout> | null = null
@@ -109,20 +136,20 @@ export function scheduleSync(delay = 1500) {
   }, delay)
 }
 
-async function collectPush(): Promise<SyncRow[]> {
+async function collectPush(pushedAt: number): Promise<SyncRow[]> {
   const d = await db()
   const out: SyncRow[] = []
   for (const store of SYNCED_STORES) {
     const rows = (await d.getAll(store)) as unknown as Record<string, unknown>[]
     for (const row of rows) {
       const up = effUpdated(row)
-      if (up > marks.pushedAt) {
+      if (up > pushedAt) {
         out.push({ id: String(row.id), store, updatedAt: up, data: row })
       }
     }
   }
   for (const t of await d.getAll('tombstones')) {
-    if (t.updatedAt > marks.pushedAt) {
+    if (t.updatedAt > pushedAt) {
       out.push({ id: t.rowId, store: t.store, updatedAt: t.updatedAt, deleted: true, data: null })
     }
   }
@@ -159,8 +186,9 @@ export async function syncNow(reason: string): Promise<void> {
   syncing = true
   useSync.setState({ status: 'syncing', detail: '' })
   try {
+    const m = await loadMarks()
     const t0 = Date.now()
-    const push = await collectPush()
+    const push = await collectPush(m.pushedAt)
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (s.key) headers['X-Chop-Key'] = s.key
     const endpoint = `${s.url || ''}/api/sync`
@@ -180,7 +208,7 @@ export async function syncNow(reason: string): Promise<void> {
         res = await fetch(endpoint, {
           method: 'POST',
           headers,
-          body: JSON.stringify({ since: marks.since || 0, rows: chunk }),
+          body: JSON.stringify({ since: m.since || 0, rows: chunk }),
           signal: ctrl.signal,
         })
       } finally {
@@ -206,9 +234,8 @@ export async function syncNow(reason: string): Promise<void> {
     for (const r of pulled) {
       if (await applyRow(r)) changed++
     }
-    marks = { since: serverNow, pushedAt: t0, lastSyncAt: Date.now() }
-    writeJson(WM_KEY, marks)
-    useSync.setState({ status: 'ok', lastSyncAt: marks.lastSyncAt, detail: '' })
+    await saveMarks({ since: serverNow, pushedAt: t0, lastSyncAt: Date.now() })
+    useSync.setState({ status: 'ok', lastSyncAt: Date.now(), detail: '' })
     if (changed > 0) await useDrumline.getState().reloadFromDb()
   } catch (err) {
     useSync.setState({
@@ -230,10 +257,23 @@ let initialized = false
 export function initSync() {
   if (initialized) return
   initialized = true
+  // Ask the browser not to evict our storage under disk pressure — losing the
+  // database between rehearsals is exactly the failure this app can't have.
+  try {
+    void navigator.storage?.persist?.()?.catch(() => {})
+  } catch {
+    /* unsupported */
+  }
   window.addEventListener(CHANGED_EVENT, () => scheduleSync())
   window.addEventListener('online', () => scheduleSync(300))
+  // visibilitychange covers tab switches; pageshow catches iOS standalone
+  // relaunches restored from a snapshot, where visibility never flips.
+  window.addEventListener('pageshow', () => scheduleSync(400))
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') scheduleSync(400)
+  })
+  void loadMarks().then((m) => {
+    if (m.lastSyncAt) useSync.setState({ lastSyncAt: m.lastSyncAt })
   })
   scheduleSync(800)
 }

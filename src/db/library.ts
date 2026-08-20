@@ -95,6 +95,13 @@ interface ChopDB extends DBSchema {
     key: string
     value: Tombstone
   }
+  /** Engine bookkeeping (sync watermarks). Lives HERE, not localStorage, so a
+   *  wiped database also wipes the "already synced" markers and the next sync
+   *  re-pulls everything instead of believing an empty device is current. */
+  meta: {
+    key: string
+    value: { key: string; value: unknown }
+  }
 }
 
 let dbp: Promise<IDBPDatabase<ChopDB>> | null = null
@@ -102,7 +109,7 @@ let dbp: Promise<IDBPDatabase<ChopDB>> | null = null
 /** Single shared connection — records.ts uses it too. */
 export const db = () => {
   if (!dbp) {
-    dbp = openDB<ChopDB>('chopbuilder', 4, {
+    dbp = openDB<ChopDB>('chopbuilder', 5, {
       upgrade(d, oldVersion) {
         if (oldVersion < 1) {
           const folders = d.createObjectStore('folders', { keyPath: 'id' })
@@ -131,6 +138,9 @@ export const db = () => {
         if (oldVersion < 4) {
           // Deletion markers so removals propagate through multi-device sync.
           d.createObjectStore('tombstones', { keyPath: 'id' })
+        }
+        if (oldVersion < 5) {
+          d.createObjectStore('meta', { keyPath: 'key' })
         }
       },
     })
