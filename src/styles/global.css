@@ -1806,6 +1806,12 @@ html[data-mode='outdoor'] .nav {
 .install-hint b {
   color: var(--text);
 }
+.sync-nudge {
+  border-top-color: var(--accent-line);
+}
+.sync-nudge b {
+  color: var(--accent);
+}
 
 .top-nav {
   min-width: 0;

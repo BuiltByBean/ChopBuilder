@@ -21,7 +21,7 @@ import { useLibrary } from './state/useLibrary'
 import { useDrumline } from './state/useDrumline'
 import { usePrefs } from './state/usePrefs'
 import { useToast } from './state/useToast'
-import { initSync } from './sync/sync'
+import { initSync, useSync } from './sync/sync'
 import { Calendar, Close, HeatGrid, Metro, MoreH, Pause, Play, Sticks } from './components/icons'
 
 const isChopsPath = (p: string) =>
@@ -102,6 +102,7 @@ export default function App() {
         </Routes>
       </main>
 
+      <SyncNudge />
       <InstallHint />
       <TabBar pathname={pathname} />
       <ToastHost />
@@ -139,6 +140,69 @@ function TabBar({ pathname }: { pathname: string }) {
         </Link>
       ))}
     </nav>
+  )
+}
+
+const SYNC_NUDGE_KEY = 'chopbuilder:syncNudgeDismissed'
+
+/**
+ * Data lives per device until sync is on — a lesson nobody should learn by
+ * "losing" a roster. When this site has a live sync server and sync is off,
+ * say so once, with a one-tap path to the switch.
+ */
+function SyncNudge() {
+  const enabled = useSync((s) => s.enabled)
+  const [show, setShow] = useState(false)
+
+  useEffect(() => {
+    if (enabled) return
+    let dismissed = false
+    try {
+      dismissed = !!localStorage.getItem(SYNC_NUDGE_KEY)
+    } catch {
+      /* ignore */
+    }
+    if (dismissed) return
+    let dead = false
+    // Only nudge when the origin serving the app really has a sync backend
+    // (dev servers and static mirrors answer this with HTML or a 404).
+    fetch('api/health')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { ok?: boolean; db?: boolean } | null) => {
+        if (!dead && j?.ok && j?.db) setShow(true)
+      })
+      .catch(() => {
+        /* no server here */
+      })
+    return () => {
+      dead = true
+    }
+  }, [enabled])
+
+  if (!show || enabled) return null
+  return (
+    <div className="install-hint sync-nudge" role="note">
+      <span>
+        <b>Sync is off</b> — what you enter here stays on this device only.
+      </span>
+      <Link to="/more" className="btn sm primary" onClick={() => setShow(false)}>
+        Turn on
+      </Link>
+      <button
+        className="btn icon xs ghost"
+        aria-label="Dismiss sync reminder"
+        onClick={() => {
+          try {
+            localStorage.setItem(SYNC_NUDGE_KEY, '1')
+          } catch {
+            /* ignore */
+          }
+          setShow(false)
+        }}
+      >
+        <Close size={14} />
+      </button>
+    </div>
   )
 }
 
