@@ -273,6 +273,33 @@ def sync():
     return jsonify(now=now, rows=out)
 
 
+# ---------------- device diagnostics ----------------
+# Phones are black boxes; the client POSTs a small state snapshot on boot and
+# after each sync attempt, and GET returns the recent ones. Statuses and
+# counts only — never roster contents.
+_diag = []
+_diag_lock = threading.Lock()
+
+
+@app.route("/api/diag", methods=["POST"])
+def diag_post():
+    body = request.get_json(silent=True) or {}
+    if not isinstance(body, dict) or len(json.dumps(body, separators=(",", ":"))) > 4000:
+        return jsonify(ok=False), 400
+    entry = {"at": int(time.time() * 1000), **body}
+    with _diag_lock:
+        _diag.append(entry)
+        del _diag[:-50]
+    print("DIAG", json.dumps(entry, separators=(",", ":")), flush=True)
+    return jsonify(ok=True)
+
+
+@app.route("/api/diag")
+def diag_get():
+    with _diag_lock:
+        return jsonify(entries=list(_diag))
+
+
 # ---------------- static app (Vite build) ----------------
 _TOP_ALLOWED = {"index.html", "manifest.webmanifest", "sw.js",
                 "icon.svg", "icon-192.png", "icon-512.png",

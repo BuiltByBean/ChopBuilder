@@ -208,7 +208,11 @@ export async function syncNow(reason: string): Promise<void> {
         res = await fetch(endpoint, {
           method: 'POST',
           headers,
-          body: JSON.stringify({ since: m.since || 0, rows: chunk }),
+          // since: 0 — ALWAYS pull the full set. The data is a few dozen rows,
+          // and an incremental watermark is the one piece of state that can go
+          // wrong invisibly (it did: a surviving watermark over an emptied
+          // database hid the roster). LWW apply makes the full pull idempotent.
+          body: JSON.stringify({ since: 0, rows: chunk }),
           signal: ctrl.signal,
         })
       } finally {
@@ -237,11 +241,13 @@ export async function syncNow(reason: string): Promise<void> {
     await saveMarks({ since: serverNow, pushedAt: t0, lastSyncAt: Date.now() })
     useSync.setState({ status: 'ok', lastSyncAt: Date.now(), detail: '' })
     if (changed > 0) await useDrumline.getState().reloadFromDb()
+    beacon('sync', { reason, pulled: pulled.length, applied: changed })
   } catch (err) {
     useSync.setState({
       status: 'error',
       detail: err instanceof Error ? err.message : 'sync failed',
     })
+    beacon('sync-error', { reason, error: useSync.getState().detail })
   } finally {
     syncing = false
     if (queued) {
@@ -252,6 +258,37 @@ export async function syncNow(reason: string): Promise<void> {
 }
 
 let initialized = false
+
+/**
+ * Report this device's state to the server (fire-and-forget) so remote
+ * debugging doesn't depend on screenshots. Counts and statuses only —
+ * no roster contents. Read back at GET /api/diag.
+ */
+function beacon(stage: string, extra: Record<string, unknown> = {}) {
+  try {
+    const s = useSync.getState()
+    void fetch(`${s.url || ''}/api/diag`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        stage,
+        build: __BUILD_TIME__,
+        standalone:
+          window.matchMedia('(display-mode: standalone)').matches ||
+          (navigator as unknown as { standalone?: boolean }).standalone === true,
+        status: s.status,
+        detail: s.detail,
+        dbBlocked: !!(window as { __dbBlocked?: boolean }).__dbBlocked,
+        players: useDrumline.getState().players.length,
+        marks,
+        ua: navigator.userAgent.slice(0, 110),
+        ...extra,
+      }),
+    }).catch(() => {})
+  } catch {
+    /* telemetry must never break the app */
+  }
+}
 
 /** Wire the triggers once at app start: local changes, regaining network, tab return. */
 export function initSync() {
@@ -274,6 +311,7 @@ export function initSync() {
   })
   void loadMarks().then((m) => {
     if (m.lastSyncAt) useSync.setState({ lastSyncAt: m.lastSyncAt })
+    beacon('boot')
   })
   scheduleSync(800)
 }
