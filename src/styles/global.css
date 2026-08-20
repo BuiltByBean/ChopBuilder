@@ -3571,7 +3571,10 @@ html[data-mode='outdoor'] .hm-cell.st-bg-not_started {
 @media (max-width: 720px) {
   .nav {
     gap: 10px;
-    padding: 0 12px;
+    /* Longhands only: a `padding:` shorthand here would reset padding-top and
+       silently throw away the status-bar inset the shell works to provide. */
+    padding-left: max(12px, env(safe-area-inset-left, 0px));
+    padding-right: max(12px, env(safe-area-inset-right, 0px));
   }
   /* Three links plus the transport outgrow a phone: the brand shrinks to its
      mark and the link row scrolls sideways instead of pushing the page wide. */
