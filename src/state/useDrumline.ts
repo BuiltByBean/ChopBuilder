@@ -2,8 +2,10 @@ import { create } from 'zustand'
 import * as api from '../db/drumline'
 import {
   INSTRUMENTS,
+  instrumentGroup,
   pcId,
   playerName,
+  skillRankId,
   statusRank,
   uid,
   type CheckStatus,
@@ -13,7 +15,10 @@ import {
   type Player,
   type PlayerCheckpoint,
   type RecordingMeta,
+  type SectionName,
   type Session,
+  type Skill,
+  type SkillRank,
   type StatusChange,
 } from '../db/drumline'
 
@@ -37,6 +42,9 @@ interface DrumlineState {
   notes: Note[]
   sessions: Session[]
   recordings: RecordingMeta[]
+  skills: Skill[]
+  /** Keyed `${skillId}|${section}`. */
+  skillRanks: Record<string, SkillRank>
 
   load: () => Promise<void>
 
@@ -77,6 +85,11 @@ interface DrumlineState {
   addRecording: (meta: Omit<RecordingMeta, 'id' | 'createdAt'>, blob: Blob) => RecordingMeta
   removeRecording: (id: string) => void
 
+  addSkill: (name: string) => void
+  updateSkill: (id: string, patch: Partial<Omit<Skill, 'id'>>) => void
+  /** Replace the full order for one skill × section (rank 1 first). */
+  setSkillOrder: (skillId: string, section: SectionName, order: string[]) => void
+
   /** Re-read every store from IndexedDB — after a sync pull or a backup import. */
   reloadFromDb: () => Promise<void>
 }
@@ -90,12 +103,16 @@ export const useDrumline = create<DrumlineState>((set, get) => ({
   notes: [],
   sessions: [],
   recordings: [],
+  skills: [],
+  skillRanks: {},
 
   load: async () => {
     if (get().loaded) return
     const data = await api.loadAll()
     const pcs: Record<string, PlayerCheckpoint> = {}
     for (const pc of data.playerCheckpoints) pcs[pc.id] = pc
+    const skillRanks: Record<string, SkillRank> = {}
+    for (const r of data.skillRanks) skillRanks[r.id] = r
     set({
       loaded: true,
       players: data.players,
@@ -105,6 +122,8 @@ export const useDrumline = create<DrumlineState>((set, get) => ({
       notes: data.notes,
       sessions: data.sessions,
       recordings: data.recordings,
+      skills: data.skills,
+      skillRanks,
     })
   },
 
@@ -282,6 +301,34 @@ export const useDrumline = create<DrumlineState>((set, get) => ({
     persist(api.deleteRecording(id))
   },
 
+  addSkill: (name) => {
+    const maxOrder = Math.max(0, ...get().skills.map((s) => s.sortOrder))
+    const skill: Skill = {
+      id: uid(),
+      name: name.trim(),
+      sortOrder: maxOrder + 10,
+      active: true,
+      createdAt: Date.now(),
+    }
+    set((s) => ({ skills: [...s.skills, skill] }))
+    persist(api.putSkill(skill))
+  },
+
+  updateSkill: (id, patch) => {
+    const cur = get().skills.find((s) => s.id === id)
+    if (!cur) return
+    const next = { ...cur, ...patch }
+    set((s) => ({ skills: s.skills.map((x) => (x.id === id ? next : x)) }))
+    persist(api.putSkill(next))
+  },
+
+  setSkillOrder: (skillId, section, order) => {
+    const id = skillRankId(skillId, section)
+    const row: SkillRank = { id, skillId, section, order }
+    set((s) => ({ skillRanks: { ...s.skillRanks, [id]: row } }))
+    persist(api.putSkillRank(row))
+  },
+
   reloadFromDb: async () => {
     set({ loaded: false })
     await get().load()
@@ -415,6 +462,103 @@ export function weakestCheckpoints(
       return { checkpoint, avg: sum / active.length, notPassed }
     })
     .sort((a, b) => a.avg - b.avg || b.notPassed - a.notPassed)
+}
+
+// --- skills ranking -------------------------------------------------------------
+
+/** Sections that actually have active players, in instrument order. */
+export function sectionsOf(players: Player[]): SectionName[] {
+  const seen: SectionName[] = []
+  for (const p of [...players.filter((x) => x.active)].sort(
+    (a, b) => INSTRUMENTS.indexOf(a.instrument) - INSTRUMENTS.indexOf(b.instrument),
+  )) {
+    const g = instrumentGroup(p.instrument)
+    if (!seen.includes(g)) seen.push(g)
+  }
+  return seen
+}
+
+/** Active players of one section, roster-stable order. */
+export function sectionPlayers(players: Player[], section: SectionName): Player[] {
+  return players
+    .filter((p) => p.active && instrumentGroup(p.instrument) === section)
+    .sort((a, b) => INSTRUMENTS.indexOf(a.instrument) - INSTRUMENTS.indexOf(b.instrument))
+}
+
+/**
+ * The effective ranking for a skill × section: the stored order minus anyone
+ * who left the section, plus newcomers appended at the bottom. The stored row
+ * never blocks roster changes — it just remembers the coach's last ordering.
+ */
+export function rankingFor(
+  skillRanks: Record<string, SkillRank>,
+  skillId: string,
+  section: SectionName,
+  players: Player[],
+): Player[] {
+  const inSection = sectionPlayers(players, section)
+  const byId = new Map(inSection.map((p) => [p.id, p]))
+  const stored = skillRanks[skillRankId(skillId, section)]?.order ?? []
+  const out: Player[] = []
+  for (const id of stored) {
+    const p = byId.get(id)
+    if (p) {
+      out.push(p)
+      byId.delete(id)
+    }
+  }
+  for (const p of inSection) if (byId.has(p.id)) out.push(p)
+  return out
+}
+
+/** 1-based rank of a player in a skill within their section, or null when unranked/solo. */
+export function rankOf(
+  skillRanks: Record<string, SkillRank>,
+  skillId: string,
+  player: Player,
+  players: Player[],
+): { rank: number; of: number } | null {
+  const section = instrumentGroup(player.instrument)
+  const list = rankingFor(skillRanks, skillId, section, players)
+  if (list.length < 2) return null
+  const i = list.findIndex((p) => p.id === player.id)
+  return i === -1 ? null : { rank: i + 1, of: list.length }
+}
+
+export const activeSkills = (skills: Skill[]) =>
+  skills.filter((s) => s.active).sort((a, b) => a.sortOrder - b.sortOrder)
+
+// --- progress over time ---------------------------------------------------------
+
+export interface WeekPoint {
+  /** Local noon of the week's Monday. */
+  weekStart: number
+  passes: number
+}
+
+/**
+ * Passes logged per week (last `weeks`, oldest first) from the append-only
+ * status history — the "are we actually moving" strip.
+ */
+export function passesPerWeek(history: StatusChange[], weeks = 8): WeekPoint[] {
+  const now = new Date()
+  const day = (now.getDay() + 6) % 7 // Monday = 0
+  const thisMonday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day, 12).getTime()
+  const WEEK = 7 * 24 * 3600 * 1000
+  const out: WeekPoint[] = []
+  for (let i = weeks - 1; i >= 0; i--) {
+    out.push({ weekStart: thisMonday - i * WEEK, passes: 0 })
+  }
+  for (const h of history) {
+    if (h.to !== 'passed') continue
+    for (const w of out) {
+      if (h.at >= w.weekStart - 12 * 3600 * 1000 && h.at < w.weekStart + WEEK - 12 * 3600 * 1000) {
+        w.passes++
+        break
+      }
+    }
+  }
+  return out
 }
 
 // --- dates ---------------------------------------------------------------------

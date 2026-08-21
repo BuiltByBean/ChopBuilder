@@ -3126,6 +3126,221 @@ html[data-mode='outdoor'] .hm-cell.st-bg-not_started {
   color: var(--text-faint);
   font-family: var(--mono);
 }
+.weak-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.weak-seg,
+.section-seg {
+  max-width: 340px;
+}
+
+/* Momentum strip — checkpoint passes per week. */
+.trend-block {
+  margin: 18px 0 20px;
+}
+.trend-total {
+  font-family: var(--mono);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-faint);
+  margin-left: 8px;
+  font-weight: 500;
+}
+.trend-strip {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+.trend-col {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.trend-count {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text-dim);
+  min-height: 14px;
+}
+.trend-bar {
+  width: 100%;
+  max-width: 34px;
+  height: 56px;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.trend-bar i {
+  display: block;
+  width: 100%;
+  background: var(--accent);
+  border-radius: 6px 6px 0 0;
+  transition: height 0.3s ease;
+}
+.trend-week {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--text-faint);
+}
+html[data-mode='outdoor'] .trend-bar {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+/* Skills matrix — the forced ranking grid. */
+.skills-matrix {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: flex-start;
+}
+.sk-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.sk-table {
+  border-collapse: separate;
+  border-spacing: 4px;
+}
+.sk-table th {
+  font-weight: 600;
+}
+.sk-corner {
+  min-width: 96px;
+}
+.sk-rank {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-faint);
+  padding-bottom: 2px;
+}
+.sk-rank.weak {
+  color: var(--danger);
+}
+.sk-skill {
+  text-align: left;
+  padding-right: 6px;
+}
+.sk-skill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--text);
+  padding: 6px 0;
+  text-align: left;
+  line-height: 1.25;
+}
+.sk-skill-btn svg {
+  color: var(--text-faint);
+  flex: none;
+}
+.sk-cell {
+  min-width: 74px;
+  max-width: 108px;
+  min-height: 46px;
+  padding: 4px 8px;
+  border-radius: var(--r-sm);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+  transition: border-color 0.13s, background 0.13s, transform 0.09s;
+}
+.sk-cell:active {
+  transform: scale(0.95);
+}
+.sk-cell.armed {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.sk-table td.weak .sk-cell {
+  border-color: rgba(194, 86, 79, 0.4);
+  background: rgba(194, 86, 79, 0.08);
+  color: var(--text);
+}
+.sk-table td.weak .sk-cell.armed {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.sk-hint {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+/* Player detail — section ranking card. */
+.skillcard {
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.skillcard-rows {
+  display: flex;
+  flex-direction: column;
+}
+.skillcard-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 13.5px;
+}
+.skillcard-row:last-child {
+  border-bottom: 0;
+}
+.skillcard-rank {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.skillcard-rank b {
+  font-size: 14px;
+  color: var(--text);
+}
+.skillcard-row.last .skillcard-rank b {
+  color: var(--danger);
+}
+
+/* Notes page — search + who filter. */
+.note-search-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  margin-bottom: 10px;
+}
+.note-search {
+  flex: 1;
+  min-width: 0;
+}
+.note-who {
+  flex: none;
+  width: 168px;
+}
+.note-who .field label {
+  display: none;
+}
+.note-who .field {
+  gap: 0;
+}
 .open-group {
   margin-bottom: 14px;
 }

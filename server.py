@@ -57,6 +57,8 @@ STORES = {
     "dlHistory",
     "dlNotes",
     "dlSessions",
+    "dlSkills",
+    "dlSkillRanks",
 }
 MAX_BATCH = 2000
 MAX_ROW_BYTES = 100_000

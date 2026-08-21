@@ -8,6 +8,8 @@ import type {
   RecordingBlob,
   RecordingMeta,
   Session,
+  Skill,
+  SkillRank,
   StatusChange,
   Tombstone,
 } from './drumline'
@@ -91,6 +93,14 @@ interface ChopDB extends DBSchema {
     key: string
     value: RecordingBlob
   }
+  dlSkills: {
+    key: string
+    value: Skill
+  }
+  dlSkillRanks: {
+    key: string
+    value: SkillRank
+  }
   tombstones: {
     key: string
     value: Tombstone
@@ -109,7 +119,7 @@ let dbp: Promise<IDBPDatabase<ChopDB>> | null = null
 /** Single shared connection — records.ts uses it too. */
 export const db = () => {
   if (!dbp) {
-    dbp = openDB<ChopDB>('chopbuilder', 5, {
+    dbp = openDB<ChopDB>('chopbuilder', 6, {
       upgrade(d, oldVersion) {
         if (oldVersion < 1) {
           const folders = d.createObjectStore('folders', { keyPath: 'id' })
@@ -141,6 +151,11 @@ export const db = () => {
         }
         if (oldVersion < 5) {
           d.createObjectStore('meta', { keyPath: 'key' })
+        }
+        if (oldVersion < 6) {
+          // Per-section forced skill rankings.
+          d.createObjectStore('dlSkills', { keyPath: 'id' })
+          d.createObjectStore('dlSkillRanks', { keyPath: 'id' })
         }
       },
       // A newer build in another tab/window wants to upgrade the schema and

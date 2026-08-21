@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { NOTE_TAGS, playerName, type Note, type NoteTag } from '../db/drumline'
 import { fmtDay, fmtTime, useDrumline } from '../state/useDrumline'
 import { NoteSheet } from '../components/Drumline/NoteSheet'
+import { PickerField } from '../components/PickerSheet'
 import { Check, Pencil } from '../components/icons'
 
 type Scope = 'open' | 'resolved' | 'all'
@@ -20,6 +21,8 @@ export function NotesPage() {
 
   const [scope, setScope] = useState<Scope>('open')
   const [tagFilter, setTagFilter] = useState<NoteTag | null>(null)
+  const [whoFilter, setWhoFilter] = useState('')
+  const [query, setQuery] = useState('')
   const [editNote, setEditNote] = useState<Note | null>(null)
 
   const byId = useMemo(() => new Map(players.map((p) => [p.id, p])), [players])
@@ -32,8 +35,12 @@ export function NotesPage() {
     if (scope === 'open') l = l.filter((n) => !n.resolved)
     else if (scope === 'resolved') l = l.filter((n) => n.resolved)
     if (tagFilter) l = l.filter((n) => n.tag === tagFilter)
+    if (whoFilter === 'section') l = l.filter((n) => n.playerId === null)
+    else if (whoFilter) l = l.filter((n) => n.playerId === whoFilter)
+    const q = query.trim().toLowerCase()
+    if (q) l = l.filter((n) => n.body.toLowerCase().includes(q))
     return [...l].sort((a, b) => b.createdAt - a.createdAt)
-  }, [notes, scope, tagFilter])
+  }, [notes, scope, tagFilter, whoFilter, query])
 
   return (
     <div className="dl-page">
@@ -45,6 +52,35 @@ export function NotesPage() {
               {s === 'open' ? `Open (${openCount})` : s === 'resolved' ? 'Resolved' : 'All'}
             </button>
           ))}
+        </div>
+      </div>
+
+      <div className="note-search-row">
+        <input
+          className="input note-search"
+          type="search"
+          placeholder="Search notes"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          autoCapitalize="off"
+        />
+        <div className="note-who">
+          <PickerField
+            id="note-who"
+            label=""
+            title="Whose notes?"
+            value={whoFilter}
+            groups={[
+              { options: [{ value: 'section', label: 'Section notes' }] },
+              {
+                options: players
+                  .filter((p) => p.active)
+                  .map((p) => ({ value: p.id, label: playerName(p), meta: p.instrument })),
+              },
+            ]}
+            onChange={setWhoFilter}
+            noneLabel="Everyone"
+          />
         </div>
       </div>
 

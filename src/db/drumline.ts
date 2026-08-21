@@ -166,6 +166,53 @@ export interface Session {
   updatedAt?: number
 }
 
+export type SectionName = ReturnType<typeof instrumentGroup>
+
+/**
+ * A rankable skill — the comparison axes for the per-section forced ranking
+ * ("who is weakest at marching in the snares"). Seeded from the note-tag
+ * vocabulary so notes and rankings speak the same language.
+ */
+export interface Skill {
+  id: string
+  name: string
+  sortOrder: number
+  /** Retired skills keep their ranking history but leave the matrix. */
+  active: boolean
+  createdAt: number
+  updatedAt?: number
+}
+
+/**
+ * One row per skill × section: every active player in that section holds
+ * exactly one slot, strongest first. No ties by design — a forced ranking is
+ * what turns "he's kind of weak" into "he is 3rd of 3".
+ */
+export interface SkillRank {
+  /** `${skillId}|${section}` */
+  id: string
+  skillId: string
+  section: SectionName
+  /** playerIds, rank 1 (strongest) first. */
+  order: string[]
+  updatedAt?: number
+}
+
+export const skillRankId = (skillId: string, section: SectionName) => `${skillId}|${section}`
+
+const SEED_SKILLS = ['Technique', 'Timing', 'Marching', 'Sound Quality', 'Attitude/Effort']
+
+/** Deterministic ids so seeds line up across devices (same trick as checkpoints). */
+export function seedSkills(now: number): Skill[] {
+  return SEED_SKILLS.map((name, i) => ({
+    id: `sk-${String(i + 1).padStart(2, '0')}`,
+    name,
+    sortOrder: (i + 1) * 10,
+    active: true,
+    createdAt: now,
+  }))
+}
+
 export interface RecordingMeta {
   id: string
   /** null → section-wide recording (the usual case). */
@@ -274,6 +321,8 @@ export const SYNCED_STORES = [
   'dlHistory',
   'dlNotes',
   'dlSessions',
+  'dlSkills',
+  'dlSkillRanks',
 ] as const
 export type SyncedStore = (typeof SYNCED_STORES)[number]
 
@@ -332,11 +381,13 @@ export interface DrumlineData {
   notes: Note[]
   sessions: Session[]
   recordings: RecordingMeta[]
+  skills: Skill[]
+  skillRanks: SkillRank[]
 }
 
 export async function loadAll(): Promise<DrumlineData> {
   const d = await db()
-  const [players, checkpoints, playerCheckpoints, history, notes, sessions, recordings] =
+  const [players, checkpoints, playerCheckpoints, history, notes, sessions, recordings, skills, skillRanks] =
     await Promise.all([
       d.getAll('dlPlayers'),
       d.getAll('dlCheckpoints'),
@@ -345,6 +396,8 @@ export async function loadAll(): Promise<DrumlineData> {
       d.getAll('dlNotes'),
       d.getAll('dlSessions'),
       d.getAll('dlRecordings'),
+      d.getAll('dlSkills'),
+      d.getAll('dlSkillRanks'),
     ])
   // First run: seed the technique standards. Deactivating rows keeps them in
   // the store, so an empty store can only mean "never seeded". Seeds carry
@@ -357,7 +410,24 @@ export async function loadAll(): Promise<DrumlineData> {
     for (const c of cps) void tx.store.put(c)
     await tx.done
   }
-  return { players, checkpoints: cps, playerCheckpoints, history, notes, sessions, recordings }
+  let sks = skills
+  if (sks.length === 0) {
+    sks = seedSkills(Date.now()).map((s) => ({ ...s, updatedAt: 1 }))
+    const tx = d.transaction('dlSkills', 'readwrite')
+    for (const s of sks) void tx.store.put(s)
+    await tx.done
+  }
+  return {
+    players,
+    checkpoints: cps,
+    playerCheckpoints,
+    history,
+    notes,
+    sessions,
+    recordings,
+    skills: sks,
+    skillRanks,
+  }
 }
 
 export async function putPlayer(p: Player) {
@@ -394,6 +464,12 @@ export async function putSession(s: Session) {
 }
 export async function deleteSession(id: string) {
   await deleteSynced('dlSessions', id)
+}
+export async function putSkill(s: Skill) {
+  await putSynced('dlSkills', s)
+}
+export async function putSkillRank(r: SkillRank) {
+  await putSynced('dlSkillRanks', r)
 }
 
 export async function putRecording(meta: RecordingMeta, blob: Blob) {
@@ -485,6 +561,8 @@ export async function importBackup(file: BackupFile) {
     'dlHistory',
     'dlNotes',
     'dlSessions',
+    'dlSkills',
+    'dlSkillRanks',
     'dlRecordings',
     'dlRecordingBlobs',
     'tombstones',
@@ -500,6 +578,8 @@ export async function importBackup(file: BackupFile) {
   for (const h of file.data.history ?? []) void tx.objectStore('dlHistory').put(h)
   for (const n of file.data.notes ?? []) void tx.objectStore('dlNotes').put(n)
   for (const s of file.data.sessions ?? []) void tx.objectStore('dlSessions').put(s)
+  for (const sk of file.data.skills ?? []) void tx.objectStore('dlSkills').put(sk)
+  for (const r of file.data.skillRanks ?? []) void tx.objectStore('dlSkillRanks').put(r)
   const mediaIds = new Set((file.media ?? []).map((m) => m.id))
   for (const r of file.data.recordings ?? []) {
     // A data-only backup can't restore the audio itself; keep only rows whose

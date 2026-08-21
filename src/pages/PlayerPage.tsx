@@ -11,11 +11,13 @@ import {
   NOTE_TAGS,
 } from '../db/drumline'
 import {
+  activeSkills,
   fmtDay,
   fmtTime,
   frontierOf,
   orderedCheckpoints,
   progressOf,
+  rankOf,
   statusOf,
   tempoOf,
   useDrumline,
@@ -162,6 +164,8 @@ export function PlayerPage() {
         )}
       </section>
 
+      <SkillsCard playerId={player.id} />
+
       {phases.map((ph) => (
         <section key={ph.phase} className="phase-block">
           <h4 className="section-label">
@@ -296,5 +300,38 @@ export function PlayerPage() {
         />
       )}
     </div>
+  )
+}
+
+/** Where this player stands in the section's forced rankings — 1 is strongest. */
+function SkillsCard({ playerId }: { playerId: string }) {
+  const players = useDrumline((s) => s.players)
+  const skills = useDrumline((s) => s.skills)
+  const skillRanks = useDrumline((s) => s.skillRanks)
+
+  const player = players.find((p) => p.id === playerId)
+  if (!player) return null
+
+  const rows = activeSkills(skills).flatMap((sk) => {
+    const r = rankOf(skillRanks, sk.id, player, players)
+    return r ? [{ sk, r }] : []
+  })
+
+  if (rows.length === 0) return null
+
+  return (
+    <section className="skillcard card">
+      <h4 className="section-label">Section ranking</h4>
+      <div className="skillcard-rows">
+        {rows.map(({ sk, r }) => (
+          <div key={sk.id} className={`skillcard-row${r.rank === r.of ? ' last' : ''}`}>
+            <span className="skillcard-name">{sk.name}</span>
+            <span className="skillcard-rank">
+              <b>{r.rank}</b> of {r.of}
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
   )
 }

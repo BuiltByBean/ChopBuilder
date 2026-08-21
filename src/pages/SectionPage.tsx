@@ -14,7 +14,10 @@ import {
 import {
   gateReports,
   orderedCheckpoints,
+  passesPerWeek,
   rosterOrder,
+  sectionPlayers,
+  sectionsOf,
   statusOf,
   useDrumline,
   weakestCheckpoints,
@@ -24,13 +27,17 @@ import { useToast } from '../state/useToast'
 import { Sheet } from '../components/Sheet'
 import { GateStar } from '../components/Drumline/common'
 import { NoteSheet } from '../components/Drumline/NoteSheet'
+import { SkillsMatrix } from '../components/Drumline/SkillsMatrix'
 import { Check, Pencil } from '../components/icons'
+import type { SectionName } from '../db/drumline'
 
 /**
  * Section View — the reason the app exists. Checkpoints down, players across,
  * one glance says where the line stands. First column sticks while the player
  * columns scroll sideways.
  */
+const MODE_KEY = 'chopbuilder:sectionMode'
+
 export function SectionPage() {
   const players = useDrumline((s) => s.players)
   const checkpoints = useDrumline((s) => s.checkpoints)
@@ -39,6 +46,21 @@ export function SectionPage() {
   const loaded = useDrumline((s) => s.loaded)
 
   const [cell, setCell] = useState<{ player: Player; cp: Checkpoint } | null>(null)
+  const [mode, setMode] = useState<'checkpoints' | 'skills'>(() => {
+    try {
+      return localStorage.getItem(MODE_KEY) === 'skills' ? 'skills' : 'checkpoints'
+    } catch {
+      return 'checkpoints'
+    }
+  })
+  const pickMode = (m: 'checkpoints' | 'skills') => {
+    setMode(m)
+    try {
+      localStorage.setItem(MODE_KEY, m)
+    } catch {
+      /* ignore */
+    }
+  }
 
   const active = useMemo(() => players.filter((p) => p.active), [players])
   const cols = useMemo(
@@ -47,10 +69,6 @@ export function SectionPage() {
   )
   const rows = useMemo(() => orderedCheckpoints(checkpoints), [checkpoints])
   const gates = useMemo(() => gateReports(checkpoints, players, pcs), [checkpoints, players, pcs])
-  const weakest = useMemo(
-    () => weakestCheckpoints(checkpoints, players, pcs).slice(0, 5),
-    [checkpoints, players, pcs],
-  )
 
   if (loaded && active.length === 0) {
     return (
@@ -70,8 +88,22 @@ export function SectionPage() {
 
   return (
     <div className="dl-page section-page">
-      <h2 className="page-title">Section</h2>
+      <div className="page-head">
+        <h2 className="page-title">Section</h2>
+        <div className="seg scope-seg">
+          <button aria-pressed={mode === 'checkpoints'} onClick={() => pickMode('checkpoints')}>
+            Checkpoints
+          </button>
+          <button aria-pressed={mode === 'skills'} onClick={() => pickMode('skills')}>
+            Skills
+          </button>
+        </div>
+      </div>
 
+      {mode === 'skills' ? (
+        <SkillsMatrix />
+      ) : (
+        <>
       <div className="heatwrap" role="grid" aria-label="Checkpoint heatmap">
         <table className="heatmap">
           <thead>
@@ -80,7 +112,7 @@ export function SectionPage() {
               {cols.map((p) => (
                 <th key={p.id} className="hm-col">
                   <Link to={`/player/${p.id}`} className="hm-player">
-                    {p.firstName.slice(0, 9)} {p.lastInitial}
+                    {playerName(p).slice(0, 11)}
                   </Link>
                 </th>
               ))}
@@ -143,28 +175,95 @@ export function SectionPage() {
         </div>
       </section>
 
-      <section className="weak-block">
-        <h4 className="section-label">Weakest checkpoints</h4>
-        {weakest.length === 0 && <p className="quiet-empty">No players yet.</p>}
-        <div className="weak-list">
-          {weakest.map((w, i) => (
-            <div key={w.checkpoint.id} className="weak-row">
-              <span className="weak-rank">{i + 1}</span>
-              <span className="weak-name">
-                P{w.checkpoint.phase} · {w.checkpoint.name}
-              </span>
-              <span className="weak-count">{w.notPassed} not passed</span>
-            </div>
-          ))}
-        </div>
-      </section>
+      <TrendStrip />
+
+      <WeakestBlock />
 
       <OpenNotes />
 
       {cell && (
         <SetStatusSheet player={cell.player} cp={cell.cp} onClose={() => setCell(null)} />
       )}
+        </>
+      )}
     </div>
+  )
+}
+
+/** Passes logged per week — the "are we actually moving" strip. */
+function TrendStrip() {
+  const history = useDrumline((s) => s.history)
+  const weeks = useMemo(() => passesPerWeek(history, 8), [history])
+  const max = Math.max(1, ...weeks.map((w) => w.passes))
+  const total = weeks.reduce((a, w) => a + w.passes, 0)
+
+  return (
+    <section className="trend-block">
+      <h4 className="section-label">
+        Momentum <span className="trend-total">{total} passes · 8 weeks</span>
+      </h4>
+      <div className="trend-strip" aria-label="Checkpoint passes per week">
+        {weeks.map((w) => (
+          <div key={w.weekStart} className="trend-col">
+            <span className="trend-count">{w.passes > 0 ? w.passes : ''}</span>
+            <div className="trend-bar">
+              <i style={{ height: `${Math.max(w.passes > 0 ? 8 : 2, (w.passes / max) * 100)}%` }} />
+            </div>
+            <span className="trend-week">
+              {new Date(w.weekStart).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })}
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+/** Weakest checkpoints, line-wide or per section — different rehearsal plans. */
+function WeakestBlock() {
+  const players = useDrumline((s) => s.players)
+  const checkpoints = useDrumline((s) => s.checkpoints)
+  const pcs = useDrumline((s) => s.pcs)
+  const [scope, setScope] = useState<'line' | SectionName>('line')
+
+  const sections = useMemo(() => sectionsOf(players), [players])
+  const scoped = scope !== 'line' && sections.includes(scope) ? scope : 'line'
+  const pool = scoped === 'line' ? players : sectionPlayers(players, scoped)
+  const weakest = useMemo(
+    () => weakestCheckpoints(checkpoints, pool, pcs).slice(0, 5),
+    [checkpoints, pool, pcs],
+  )
+
+  return (
+    <section className="weak-block">
+      <div className="weak-head">
+        <h4 className="section-label">Weakest checkpoints</h4>
+        {sections.length > 1 && (
+          <div className="seg weak-seg">
+            <button aria-pressed={scoped === 'line'} onClick={() => setScope('line')}>
+              Line
+            </button>
+            {sections.map((s) => (
+              <button key={s} aria-pressed={scoped === s} onClick={() => setScope(s)}>
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      {weakest.length === 0 && <p className="quiet-empty">No players yet.</p>}
+      <div className="weak-list">
+        {weakest.map((w, i) => (
+          <div key={w.checkpoint.id} className="weak-row">
+            <span className="weak-rank">{i + 1}</span>
+            <span className="weak-name">
+              P{w.checkpoint.phase} · {w.checkpoint.name}
+            </span>
+            <span className="weak-count">{w.notPassed} not passed</span>
+          </div>
+        ))}
+      </div>
+    </section>
   )
 }
 
