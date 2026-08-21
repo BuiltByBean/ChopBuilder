@@ -62,9 +62,6 @@ export default function App() {
   return (
     <div className="app">
       <header className="nav">
-        <Link to="/" className="brand">
-          Chop<em>Builder</em>
-        </Link>
         <nav className="nav-links top-nav">
           <TopLink to="/" label="Rehearsal" end />
           <TopLink to="/section" label="Section" />

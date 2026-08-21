@@ -131,24 +131,6 @@ button {
   z-index: 30;
 }
 
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  font-size: 15px;
-  text-decoration: none;
-  color: var(--text);
-  white-space: nowrap;
-}
-
-.brand em {
-  font-style: normal;
-  color: var(--text-dim);
-  font-weight: 400;
-}
-
 .nav-links {
   display: flex;
   gap: 4px;
@@ -3681,6 +3663,12 @@ tr.gate .hm-row-label {
 .lock-mark {
   width: 40px;
   height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--accent);
 }
 .lock-card h2 {
   margin: 0;

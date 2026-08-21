@@ -46,7 +46,7 @@ export function LockScreen() {
   return (
     <div className="lock-screen">
       <div className={`lock-card${shake ? ' shake' : ''}`}>
-        <span className="brand-mark lock-mark">
+        <span className="lock-mark">
           <Metro size={16} />
         </span>
         <h2>
