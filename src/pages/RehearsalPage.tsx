@@ -56,6 +56,7 @@ export function RehearsalPage() {
 
   return (
     <div className="rehearsal">
+      <h2 className="page-title rehearsal-title">Rehearsal</h2>
       <RehearsalBar onSectionNote={() => setSheet({ playerId: null })} />
 
       {loaded && active.length === 0 && (
@@ -113,7 +114,7 @@ function RehearsalBar({ onSectionNote }: { onSectionNote: () => void }) {
           inputMode="numeric"
           min={20}
           max={400}
-          placeholder="BPM"
+          placeholder={String(settings.bpm)}
           value={rehearsalBpm ?? ''}
           onChange={(e) => {
             const n = Number(e.target.value)
@@ -170,6 +171,14 @@ function PlayerTile({
   const dotStatus = frontier
     ? pcs[`${player.id}|${frontier.id}`]?.status ?? 'not_started'
     : 'passed'
+  const pct = prog.total > 0 ? Math.round((prog.passed / prog.total) * 100) : 0
+
+  // A nameless bass's display name IS its instrument — a sub-line repeating
+  // it verbatim is noise, not information.
+  const name = playerName(player)
+  let sub = player.instrument.startsWith('Bass') ? player.instrument : `Gr ${player.gradeLevel}`
+  if (player.isSectionLeader) sub += ' · SL'
+  if (sub === name) sub = ''
 
   // Long-press → player detail; tap → note sheet. Movement cancels (scrolling).
   const timer = useRef<number | null>(null)
@@ -216,13 +225,13 @@ function PlayerTile({
       aria-label={`${playerName(player)} — tap for a note, hold for detail`}
     >
       <span className={`pdot st-bg-${dotStatus}`} aria-hidden="true" />
-      <span className="ptile-name">{playerName(player)}</span>
-      <span className="ptile-sub">
-        {player.instrument.startsWith('Bass') ? player.instrument : `Gr ${player.gradeLevel}`}
-        {player.isSectionLeader ? ' · SL' : ''}
+      <span className="ptile-name">{name}</span>
+      {sub && <span className="ptile-sub">{sub}</span>}
+      <span className="ptile-bar" aria-hidden="true">
+        <i style={{ width: `${pct}%` }} />
       </span>
       <span className="ptile-meta">
-        {prog.passed}/{prog.total}
+        <b>{prog.passed}</b>&thinsp;of&thinsp;{prog.total}
         {openNotes > 0 && <i className="note-badge">{openNotes}</i>}
       </span>
     </button>

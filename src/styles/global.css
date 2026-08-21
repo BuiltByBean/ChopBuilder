@@ -1,13 +1,15 @@
 :root {
   --bg: #0a0b0d;
   --bg-2: #0e0f12;
-  --panel: #131417;
-  --panel-2: #191a1e;
-  --line: #24262b;
-  --line-soft: #1b1d21;
-  --text: #e4e5e8;
-  --text-dim: #979aa1;
-  --text-faint: #6a6e76;
+  --panel: #15161a;
+  --panel-2: #1c1d22;
+  /* Hairlines, not drawn borders — translucent white reads as edges catching
+     light instead of gray boxes drawn on gray. */
+  --line: rgba(255, 255, 255, 0.085);
+  --line-soft: rgba(255, 255, 255, 0.05);
+  --text: #e7e8ea;
+  --text-dim: #9a9da4;
+  --text-faint: #6d717a;
 
   /* Muted brass rather than a saturated orange — it reads as an instrument
      finish instead of a highlighter, and survives being used sparingly. */
@@ -19,10 +21,10 @@
   --good: #5fa882;
   --danger: #c2564f;
 
-  --r-sm: 5px;
-  --r: 7px;
-  --r-lg: 9px;
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  --r-sm: 9px;
+  --r: 13px;
+  --r-lg: 17px;
+  --shadow: 0 18px 44px rgba(0, 0, 0, 0.5);
 
   --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
     sans-serif;
@@ -254,13 +256,14 @@ button {
   transform: translateY(1px);
 }
 .btn.primary {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: linear-gradient(180deg, #d6a558, #bf8a3e);
+  border-color: rgba(201, 149, 74, 0.6);
   color: #17130c;
+  box-shadow: 0 2px 14px rgba(201, 149, 74, 0.22);
 }
 .btn.primary:hover {
-  background: #d5a257;
-  border-color: #d5a257;
+  background: linear-gradient(180deg, #ddaf64, #c99244);
+  border-color: rgba(201, 149, 74, 0.7);
 }
 .btn.ghost {
   background: transparent;
@@ -1784,6 +1787,7 @@ html {
   padding-top: var(--sat, env(safe-area-inset-top, 0px));
   padding-left: max(18px, env(safe-area-inset-left, 0px));
   padding-right: max(18px, env(safe-area-inset-right, 0px));
+  border-bottom: 1px solid var(--line-soft);
 }
 
 /* Sunlight mode + black-translucent status bar: paint the notch strip dark so
@@ -1792,6 +1796,35 @@ html[data-mode='outdoor'] .nav {
   padding-top: 0;
   border-top: 0 solid #0a0b0d;
   border-top-width: var(--sat, env(safe-area-inset-top, 0px));
+}
+
+/* The dark theme's hand-tuned surfaces flip back to tokens in sunlight. */
+html[data-mode='outdoor'] .ptile {
+  background: var(--panel);
+}
+html[data-mode='outdoor'] .ptile:hover {
+  border-color: rgba(0, 0, 0, 0.3);
+}
+html[data-mode='outdoor'] .ptile-bar {
+  background: rgba(0, 0, 0, 0.1);
+}
+html[data-mode='outdoor'] .btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: none;
+}
+html[data-mode='outdoor'] .btn.primary:hover {
+  background: var(--accent-hot);
+  border-color: var(--accent-hot);
+}
+html[data-mode='outdoor'] .more-row:hover,
+html[data-mode='outdoor'] .more-row:active,
+html[data-mode='outdoor'] .tab:active {
+  background: rgba(0, 0, 0, 0.06);
+}
+html[data-mode='outdoor'] .tag-chip:active {
+  filter: brightness(0.94);
 }
 
 /* One-time iOS "Add to Home Screen" pointer — a flex row above the tab bar,
@@ -1864,8 +1897,9 @@ html[data-mode='outdoor'] .nav {
 }
 .page-title {
   margin: 0;
-  font-size: 20px;
-  letter-spacing: 0.01em;
+  font-size: 27px;
+  font-weight: 800;
+  letter-spacing: -0.015em;
   margin-right: auto;
 }
 .quiet-empty {
@@ -2064,7 +2098,7 @@ html[data-mode='outdoor'] .nav {
   background: var(--panel);
   border: 1px solid var(--line);
   border-bottom: none;
-  border-radius: 16px 16px 0 0;
+  border-radius: 20px 20px 0 0;
   box-shadow: var(--shadow);
   /* Real slide-up, iOS spring-ish curve — not a 24px fade-nudge. */
   animation: sheetUp 0.32s cubic-bezier(0.32, 0.72, 0, 1);
@@ -2095,7 +2129,9 @@ html[data-mode='outdoor'] .nav {
 }
 .sheet-head h3 {
   margin: 0;
-  font-size: 17px;
+  font-size: 19px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -2202,7 +2238,7 @@ html[data-mode='outdoor'] .nav {
   filter: brightness(1.25);
 }
 .tab:active {
-  background: #17191d;
+  transform: scale(0.92);
 }
 .mic-btn:active {
   transform: scale(0.94);
@@ -2450,6 +2486,9 @@ html[data-mode='outdoor'] .nav {
   margin: 0 auto;
   padding: 0 14px 56px;
 }
+.rehearsal-title {
+  margin: 14px 0 10px;
+}
 .rehearsal-bar {
   position: sticky;
   top: 0;
@@ -2457,7 +2496,7 @@ html[data-mode='outdoor'] .nav {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 0;
+  padding: 10px 0;
   background: var(--bg);
   border-bottom: 1px solid var(--line-soft);
   margin-bottom: 14px;
@@ -2485,6 +2524,14 @@ html[data-mode='outdoor'] .nav {
 }
 .section-note-btn {
   flex: none;
+  background: var(--accent-soft);
+  border-color: transparent;
+  color: var(--accent);
+  font-weight: 650;
+}
+.section-note-btn:hover {
+  background: rgba(201, 149, 74, 0.18);
+  border-color: var(--accent-line);
 }
 .tile-section {
   margin-bottom: 18px;
@@ -2496,15 +2543,15 @@ html[data-mode='outdoor'] .nav {
 }
 .ptile {
   position: relative;
-  min-height: 88px;
-  background: var(--panel);
+  min-height: 92px;
+  background: linear-gradient(180deg, #17181d, #131418);
   border: 1px solid var(--line);
-  border-radius: var(--r);
-  padding: 12px 12px 10px;
+  border-radius: var(--r-lg);
+  padding: 13px 14px 12px;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
+  align-items: stretch;
+  gap: 3px;
   text-align: left;
   touch-action: pan-y;
   -webkit-user-select: none;
@@ -2513,38 +2560,61 @@ html[data-mode='outdoor'] .nav {
   transition: border-color 0.13s, transform 0.09s;
 }
 .ptile:hover {
-  border-color: #33363d;
+  border-color: rgba(255, 255, 255, 0.16);
 }
 .ptile:active {
-  transform: scale(0.985);
+  transform: scale(0.975);
 }
 .pdot {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 12px;
-  height: 12px;
+  top: 15px;
+  right: 14px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
 }
 .ptile-name {
-  font-size: 15px;
+  font-size: 15.5px;
   font-weight: 700;
   line-height: 1.25;
+  letter-spacing: -0.01em;
   padding-right: 18px;
 }
 .ptile-sub {
-  font-size: 11px;
+  font-size: 10.5px;
+  font-weight: 550;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--text-faint);
 }
-.ptile-meta {
+/* The tile's payload: how far along this player actually is. */
+.ptile-bar {
   margin-top: auto;
+  width: 100%;
+  height: 4px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+.ptile-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: var(--accent);
+  transition: width 0.35s ease;
+}
+.ptile-meta {
   font-family: var(--mono);
   font-size: 11px;
   color: var(--text-faint);
   display: flex;
   align-items: center;
   gap: 7px;
-  padding-top: 6px;
+  padding-top: 7px;
+}
+.ptile-meta b {
+  font-weight: 600;
+  color: var(--text-dim);
 }
 .note-badge {
   font-style: normal;
@@ -3314,27 +3384,49 @@ html[data-mode='outdoor'] .hm-cell.st-bg-not_started {
 }
 
 /* More / roster / checkpoints / backup */
+/* One grouped card, hairline-separated rows — iOS Settings anatomy, not a
+   stack of floating boxes. Rows keep the .card class in markup; the group
+   container overrides its per-row chrome. */
 .more-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
   margin-bottom: 18px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  overflow: hidden;
 }
 .more-row {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 14px;
-  min-height: 60px;
+  gap: 13px;
+  padding: 11px 14px;
+  min-height: 58px;
   color: var(--text);
   text-decoration: none;
 }
+.more-list .more-row {
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  border-bottom: 1px solid var(--line-soft);
+}
+.more-list .more-row:last-child {
+  border-bottom: 0;
+}
 .more-row:hover {
-  border-color: var(--accent-line);
+  background: #191b20;
 }
 .more-row > svg {
   color: var(--accent);
+  background: var(--accent-soft);
   flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 7px;
+  border-radius: 10px;
 }
 .more-label {
   display: flex;
@@ -3350,8 +3442,13 @@ html[data-mode='outdoor'] .hm-cell.st-bg-not_started {
   font-weight: 400;
   color: var(--text-faint);
 }
-.more-caret {
+.more-row > svg.more-caret {
   color: var(--text-faint);
+  background: none;
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  border-radius: 0;
   flex: none;
 }
 .pref-block {
@@ -3522,34 +3619,38 @@ html[data-mode='outdoor'] .hm-cell.st-bg-not_started {
   .tabbar {
     display: flex;
     flex: none;
-    gap: 2px;
-    border-top: 1px solid var(--line);
+    gap: 0;
+    border-top: 1px solid var(--line-soft);
     background: var(--bg-2);
-    padding: 4px max(6px, env(safe-area-inset-right, 0px))
-      calc(4px + var(--sab-fb, env(safe-area-inset-bottom, 0px)))
+    padding: 5px max(6px, env(safe-area-inset-right, 0px))
+      calc(3px + var(--sab-fb, env(safe-area-inset-bottom, 0px)))
       max(6px, env(safe-area-inset-left, 0px));
     z-index: 40;
   }
   .tab {
     flex: 1 1 0;
     min-width: 0;
-    min-height: 52px;
+    min-height: 50px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 3px;
-    padding: 6px 2px 4px;
-    border-radius: var(--r-sm);
+    gap: 4px;
+    padding: 5px 2px 3px;
     color: var(--text-faint);
     text-decoration: none;
-    font-size: 10.5px;
-    font-weight: 600;
+    font-size: 10px;
+    font-weight: 650;
     letter-spacing: 0.02em;
+    transition: color 0.15s, transform 0.12s;
   }
+  .tab svg {
+    width: 23px;
+    height: 23px;
+  }
+  /* iOS-native active state: the tint moves, the chrome doesn't. */
   .tab.active {
     color: var(--accent);
-    background: var(--accent-soft);
   }
   html.kb-open .tabbar {
     display: none;
