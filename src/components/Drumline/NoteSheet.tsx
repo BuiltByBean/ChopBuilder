@@ -146,15 +146,12 @@ export function NoteSheet({
   const title = edit ? 'Edit note' : player ? playerName(player) : 'Section note'
 
   useEffect(() => {
-    // On touch devices, focusing mid-entry makes the keyboard rise while the
-    // sheet is still sliding in — two animations fighting. Let the sheet land
-    // first; desktop has no keyboard animation, so it focuses instantly.
-    if (!('ontouchstart' in window)) {
-      areaRef.current?.focus()
-      return
-    }
-    const t = window.setTimeout(() => areaRef.current?.focus(), 290)
-    return () => window.clearTimeout(t)
+    // Focus must happen inside the opening tap's gesture window — iOS refuses
+    // to raise the keyboard for a focus() that arrives later (a delay here
+    // once left the sheet keyboard-less entirely). preventScroll stops iOS
+    // from panning the page to "reveal" the field; the docked sheet already
+    // shows it, and sheet + keyboard now ease upward as one motion.
+    areaRef.current?.focus({ preventScroll: true })
   }, [])
 
   // Buttons tapped mid-typing must not steal focus from the textarea — a
