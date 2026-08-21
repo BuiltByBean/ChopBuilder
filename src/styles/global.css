@@ -143,17 +143,6 @@ button {
   white-space: nowrap;
 }
 
-.brand-mark {
-  width: 24px;
-  height: 24px;
-  display: grid;
-  place-items: center;
-  border-radius: var(--r-sm);
-  border: 1px solid var(--line);
-  background: var(--panel-2);
-  color: var(--accent);
-}
-
 .brand em {
   font-style: normal;
   color: var(--text-dim);
@@ -3873,12 +3862,6 @@ tr.gate .hm-row-label {
        silently throw away the status-bar inset the shell works to provide. */
     padding-left: max(12px, env(safe-area-inset-left, 0px));
     padding-right: max(12px, env(safe-area-inset-right, 0px));
-  }
-  /* Three links plus the transport outgrow a phone: the brand shrinks to its
-     mark and the link row scrolls sideways instead of pushing the page wide. */
-  .brand {
-    font-size: 0;
-    gap: 0;
   }
   .nav-links {
     min-width: 0;
