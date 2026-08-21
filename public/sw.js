@@ -9,7 +9,7 @@
  */
 // Bump on releases that must reach installed copies promptly — changed worker
 // bytes → install → skipWaiting/claim → controllerchange → update toast.
-const CACHE = 'chopbuilder-v9'
+const CACHE = 'chopbuilder-v10'
 
 // Seed the shell plus install-surface files (manifest, icons) so a
 // hard-offline launch — and the home-screen icon — always resolve.

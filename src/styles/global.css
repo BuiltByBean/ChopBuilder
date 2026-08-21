@@ -1734,40 +1734,6 @@ input[type='range']:disabled {
   --tab-h: 60px;
 }
 
-/* Sunlight mode: white ground, saturated inks, heavier lines. A dark screen
-   washes out in direct sun; this one doesn't. */
-html[data-mode='outdoor'] {
-  --bg: #f2f3f1;
-  --bg-2: #ffffff;
-  --panel: #ffffff;
-  --panel-2: #e9eaeb;
-  --line: #9ea3ab;
-  --line-soft: #c6c9cd;
-  --text: #0b0c0e;
-  --text-dim: #2e3238;
-  --text-faint: #565b63;
-  --accent: #8a5c12;
-  --accent-hot: #6f4a0e;
-  --accent-soft: rgba(138, 92, 18, 0.14);
-  --accent-line: rgba(138, 92, 18, 0.55);
-  --beat: #2d5ba9;
-  --good: #157a45;
-  --danger: #b3261e;
-  --shadow: 0 4px 16px rgba(0, 0, 0, 0.14);
-  --st0: #b9bec6;
-  --st1: #b06f00;
-  --st2: #1f55b0;
-  --st3: #157a45;
-  --st1-soft: rgba(176, 111, 0, 0.16);
-  --st2-soft: rgba(31, 85, 176, 0.14);
-  --st3-soft: rgba(21, 122, 69, 0.16);
-  color-scheme: light;
-}
-html[data-mode='outdoor'] .beat.lit,
-html[data-mode='outdoor'] .beat.lit[data-state='accent'] {
-  animation: none;
-}
-
 /* iOS app feel: no rotated-text inflation. (Tap-highlight and touch-action
    live on the universal selector up top; scrub/press targets override.) */
 html {
@@ -1788,43 +1754,6 @@ html {
   padding-left: max(18px, env(safe-area-inset-left, 0px));
   padding-right: max(18px, env(safe-area-inset-right, 0px));
   border-bottom: 1px solid var(--line-soft);
-}
-
-/* Sunlight mode + black-translucent status bar: paint the notch strip dark so
-   the white iOS status text stays readable over the light header. */
-html[data-mode='outdoor'] .nav {
-  padding-top: 0;
-  border-top: 0 solid #0a0b0d;
-  border-top-width: var(--sat, env(safe-area-inset-top, 0px));
-}
-
-/* The dark theme's hand-tuned surfaces flip back to tokens in sunlight. */
-html[data-mode='outdoor'] .ptile {
-  background: var(--panel);
-}
-html[data-mode='outdoor'] .ptile:hover {
-  border-color: rgba(0, 0, 0, 0.3);
-}
-html[data-mode='outdoor'] .ptile-bar {
-  background: rgba(0, 0, 0, 0.1);
-}
-html[data-mode='outdoor'] .btn.primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-  box-shadow: none;
-}
-html[data-mode='outdoor'] .btn.primary:hover {
-  background: var(--accent-hot);
-  border-color: var(--accent-hot);
-}
-html[data-mode='outdoor'] .more-row:hover,
-html[data-mode='outdoor'] .more-row:active,
-html[data-mode='outdoor'] .tab:active {
-  background: rgba(0, 0, 0, 0.06);
-}
-html[data-mode='outdoor'] .tag-chip:active {
-  filter: brightness(0.94);
 }
 
 /* One-time iOS "Add to Home Screen" pointer — a flex row above the tab bar,
@@ -2501,29 +2430,8 @@ html[data-mode='outdoor'] .tag-chip:active {
   border-bottom: 1px solid var(--line-soft);
   margin-bottom: 14px;
 }
-.bpm-field {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-.bpm-field label {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-}
-.bpm-field .input {
-  width: 86px;
-  min-height: 48px;
-  text-align: center;
-  font-size: 17px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
 .section-note-btn {
-  flex: none;
+  flex: 1;
   background: var(--accent-soft);
   border-color: transparent;
   color: var(--accent);
@@ -3023,9 +2931,6 @@ tr.gate .hm-row-label {
   background: var(--st0);
   opacity: 0.55;
 }
-html[data-mode='outdoor'] .hm-cell.st-bg-not_started {
-  opacity: 1;
-}
 .hm-legend {
   display: flex;
   flex-wrap: wrap;
@@ -3207,9 +3112,6 @@ html[data-mode='outdoor'] .hm-cell.st-bg-not_started {
   font-family: var(--mono);
   font-size: 9.5px;
   color: var(--text-faint);
-}
-html[data-mode='outdoor'] .trend-bar {
-  background: rgba(0, 0, 0, 0.08);
 }
 
 /* Skills matrix — the forced ranking. Skill name above its row, player chips
@@ -3911,13 +3813,6 @@ html[data-mode='outdoor'] .trend-bar {
   }
   html.kb-open .toast {
     bottom: 18px;
-  }
-  .rehearsal-bar {
-    flex-wrap: wrap;
-  }
-  .section-note-btn {
-    flex: 1 1 100%;
-    order: 5;
   }
   .tile-grid {
     grid-template-columns: repeat(auto-fill, minmax(136px, 1fr));

@@ -1,22 +1,14 @@
 import { create } from 'zustand'
 
 /**
- * Small device-local preferences: sunlight mode, the rehearsal BPM stamp, and
- * the app lock. All of it stays in localStorage — none of it is worth an IDB
- * round-trip and the lock must be readable synchronously at boot.
+ * Small device-local preferences: the rehearsal BPM stamp and the app lock.
+ * All of it stays in localStorage — none of it is worth an IDB round-trip and
+ * the lock must be readable synchronously at boot. The app is dark-only by
+ * the owner's choice; the old sunlight mode is gone.
  */
 
-const OUTDOOR_KEY = 'chopbuilder:outdoor'
 const BPM_KEY = 'chopbuilder:rehearsalBpm'
 const LOCK_KEY = 'chopbuilder:lock'
-
-function readOutdoor(): boolean {
-  try {
-    return localStorage.getItem(OUTDOOR_KEY) === '1'
-  } catch {
-    return false
-  }
-}
 
 function readBpm(): number | null {
   try {
@@ -44,16 +36,6 @@ function readLock(): LockConfig | null {
   }
 }
 
-function applyOutdoor(on: boolean) {
-  const el = document.documentElement
-  if (on) el.dataset.mode = 'outdoor'
-  else delete el.dataset.mode
-  // Keep the browser/OS chrome tint in step with the app's ground.
-  document
-    .querySelector('meta[name="theme-color"]')
-    ?.setAttribute('content', on ? '#f2f3f1' : '#0a0b0d')
-}
-
 async function hashPin(pin: string, salt: string): Promise<string> {
   const data = new TextEncoder().encode(`${salt}:${pin}`)
   const digest = await crypto.subtle.digest('SHA-256', data)
@@ -63,14 +45,12 @@ async function hashPin(pin: string, salt: string): Promise<string> {
 }
 
 interface PrefsState {
-  outdoor: boolean
   rehearsalBpm: number | null
   /** Whether a PIN is configured on this device. */
   lockEnabled: boolean
   /** Whether the lock screen is currently up. */
   locked: boolean
 
-  toggleOutdoor: () => void
   setRehearsalBpm: (bpm: number | null) => void
   setPin: (pin: string) => Promise<void>
   clearPin: () => void
@@ -79,25 +59,17 @@ interface PrefsState {
 }
 
 const initialLock = readLock()
-const initialOutdoor = readOutdoor()
-applyOutdoor(initialOutdoor)
+// Devices that were left in the retired sunlight mode come back dark.
+try {
+  localStorage.removeItem('chopbuilder:outdoor')
+} catch {
+  /* ignore */
+}
 
 export const usePrefs = create<PrefsState>((set, get) => ({
-  outdoor: initialOutdoor,
   rehearsalBpm: readBpm(),
   lockEnabled: !!initialLock,
   locked: !!initialLock,
-
-  toggleOutdoor: () => {
-    const next = !get().outdoor
-    set({ outdoor: next })
-    applyOutdoor(next)
-    try {
-      localStorage.setItem(OUTDOOR_KEY, next ? '1' : '0')
-    } catch {
-      /* ignore */
-    }
-  },
 
   setRehearsalBpm: (bpm) => {
     set({ rehearsalBpm: bpm })

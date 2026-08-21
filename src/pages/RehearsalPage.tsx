@@ -11,10 +11,8 @@ import {
   rosterOrder,
   useDrumline,
 } from '../state/useDrumline'
-import { usePrefs } from '../state/usePrefs'
-import { useMetronome } from '../state/useMetronome'
 import { NoteSheet } from '../components/Drumline/NoteSheet'
-import { NoteIcon, Sun, UserPlus } from '../components/icons'
+import { NoteIcon, UserPlus } from '../components/icons'
 
 /**
  * Rehearsal Mode — the landing screen. Standing in a parking lot with sticks
@@ -94,61 +92,20 @@ export function RehearsalPage() {
   )
 }
 
-/** Tempo stamp + sunlight mode + notes shortcut + the section note button. */
+/** The section note button + a shortcut to every note. Capture chrome only. */
 function RehearsalBar({ onSectionNote }: { onSectionNote: () => void }) {
-  const rehearsalBpm = usePrefs((s) => s.rehearsalBpm)
-  const setRehearsalBpm = usePrefs((s) => s.setRehearsalBpm)
-  const outdoor = usePrefs((s) => s.outdoor)
-  const toggleOutdoor = usePrefs((s) => s.toggleOutdoor)
-  const { settings, running } = useMetronome()
   const openNotes = useDrumline((s) => s.notes.filter((n) => !n.resolved).length)
 
   return (
     <div className="rehearsal-bar">
-      <div className="bpm-field">
-        <label htmlFor="rehearsal-bpm">Tempo</label>
-        <input
-          id="rehearsal-bpm"
-          className="input"
-          type="number"
-          inputMode="numeric"
-          min={20}
-          max={400}
-          placeholder={String(settings.bpm)}
-          value={rehearsalBpm ?? ''}
-          onChange={(e) => {
-            const n = Number(e.target.value)
-            setRehearsalBpm(Number.isFinite(n) && n > 0 ? Math.round(n) : null)
-          }}
-        />
-        {running && settings.bpm !== rehearsalBpm && (
-          <button
-            className="btn sm ghost"
-            onClick={() => setRehearsalBpm(settings.bpm)}
-            title="Use the metronome's current tempo"
-          >
-            use {settings.bpm}
-          </button>
-        )}
-      </div>
-      <span className="nav-spacer" />
-      <Link to="/notes" className="btn icon tall notes-link" aria-label="All notes" title="All notes">
-        <NoteIcon size={18} />
-        {openNotes > 0 && <i className="icon-badge">{openNotes}</i>}
-      </Link>
-      <button
-        className={`btn icon tall${outdoor ? ' primary' : ''}`}
-        onClick={toggleOutdoor}
-        aria-label={outdoor ? 'Switch to dark mode' : 'Switch to sunlight mode'}
-        aria-pressed={outdoor}
-        title="Sunlight mode"
-      >
-        <Sun size={18} />
-      </button>
       <button className="btn tall section-note-btn" onClick={onSectionNote}>
         <NoteIcon size={16} />
         Section note
       </button>
+      <Link to="/notes" className="btn icon tall notes-link" aria-label="All notes" title="All notes">
+        <NoteIcon size={18} />
+        {openNotes > 0 && <i className="icon-badge">{openNotes}</i>}
+      </Link>
     </div>
   )
 }

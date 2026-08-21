@@ -13,14 +13,11 @@ import {
   Metro,
   NoteIcon,
   Sliders,
-  Sun,
   Users,
 } from '../components/icons'
 
-/** Everything that isn't rehearsal-speed: setup, backup, lock, display. */
+/** Everything that isn't rehearsal-speed: setup, backup, lock. */
 export function MorePage() {
-  const outdoor = usePrefs((s) => s.outdoor)
-  const toggleOutdoor = usePrefs((s) => s.toggleOutdoor)
   const lockEnabled = usePrefs((s) => s.lockEnabled)
   const [pinSheet, setPinSheet] = useState<'set' | 'clear' | null>(null)
 
@@ -78,17 +75,6 @@ export function MorePage() {
           <ChevronRight size={15} className="more-caret" />
         </Link>
       </div>
-
-      <section className="pref-block card">
-        <h4 className="section-label">Display</h4>
-        <label className="switch pref-row">
-          <input type="checkbox" checked={outdoor} onChange={toggleOutdoor} />
-          <span className="track" />
-          <span className="switch-label">
-            <Sun size={15} /> Sunlight mode (high contrast)
-          </span>
-        </label>
-      </section>
 
       <section className="pref-block card">
         <h4 className="section-label">App lock</h4>
