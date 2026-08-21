@@ -215,7 +215,13 @@
             kbEst = kb
             try { localStorage.setItem('chopbuilder.kbh', String(kb)) } catch (e) {}
             setKb(kb)
-            if (vvp && vvp.offsetTop > 0) window.scrollTo(0, 0)
+            if (vvp && vvp.offsetTop > 0) {
+              // iOS panned the page to "reveal" the field — the docked sheet
+              // already shows it, so the pan only strands the shell. Undo both
+              // pan mechanisms (window scroll AND body.scrollTop).
+              window.scrollTo(0, 0)
+              if (document.body.scrollTop) document.body.scrollTop = 0
+            }
             setTimeout(revealFocused, 60)
           } else if (Date.now() > reserveUntil) {
             setKb(0)
@@ -258,8 +264,18 @@
         window.addEventListener('focusout', function () {
           reserveUntil = 0
           unpan()
-          setTimeout(function () { unpan(); fit() }, 250)
-          setTimeout(function () { unpan(); fit() }, 600)
+          // LM-3 backstop: if nothing keyboard-summoning is focused, the
+          // keyboard CANNOT logically be up — force the reservation off even
+          // when iOS skipped the visualViewport resize on dismiss (fit()'s
+          // measurement would keep the stale height forever otherwise).
+          setTimeout(function () {
+            if (!fieldFocused()) setKb(0)
+            unpan(); fit()
+          }, 250)
+          setTimeout(function () {
+            if (!fieldFocused()) setKb(0)
+            unpan(); fit()
+          }, 600)
         })
         // iOS scrolls the BODY to reveal fields (window.scrollY reads 0 the
         // whole time); a pan left behind strands the shell under the status bar.

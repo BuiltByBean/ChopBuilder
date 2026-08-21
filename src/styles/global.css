@@ -2044,6 +2044,12 @@ html[data-mode='outdoor'] .nav {
   inset: 0;
   background: rgba(4, 6, 10, 0.66);
   backdrop-filter: blur(2px);
+  animation: backdropIn 0.26s ease-out;
+}
+@keyframes backdropIn {
+  from {
+    opacity: 0;
+  }
 }
 .sheet {
   position: absolute;
@@ -2060,12 +2066,16 @@ html[data-mode='outdoor'] .nav {
   border-bottom: none;
   border-radius: 16px 16px 0 0;
   box-shadow: var(--shadow);
-  animation: sheetUp 0.2s ease-out;
+  /* Real slide-up, iOS spring-ish curve — not a 24px fade-nudge. */
+  animation: sheetUp 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+  /* The keyboard dock (mobile block below) moves bottom/max-height; ease it. */
+  transition:
+    bottom 0.24s cubic-bezier(0.32, 0.72, 0, 1),
+    max-height 0.24s cubic-bezier(0.32, 0.72, 0, 1);
 }
 @keyframes sheetUp {
   from {
-    transform: translateY(24px);
-    opacity: 0.6;
+    transform: translateY(100%);
   }
 }
 .sheet-grip {
@@ -2096,8 +2106,7 @@ html[data-mode='outdoor'] .nav {
   flex: none;
 }
 .sheet-body {
-  /* --kb reserves the keyboard's space before iOS pans for it. */
-  padding: 10px 16px calc(20px + var(--sab-fb, env(safe-area-inset-bottom, 0px)) + var(--kb, 0px));
+  padding: 10px 16px calc(20px + var(--sab-fb, env(safe-area-inset-bottom, 0px)));
   overflow-y: auto;
   min-height: 0;
   overscroll-behavior-y: contain;
@@ -2136,11 +2145,67 @@ html[data-mode='outdoor'] .nav {
     width: min(500px, 92vw);
     border-radius: 12px;
     border-bottom: 1px solid var(--line);
-    animation: none;
+    animation: dialogIn 0.16s ease-out;
+    transition: none;
   }
   .sheet-grip {
     display: none;
   }
+}
+@keyframes dialogIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -48.5%);
+  }
+}
+
+/* Keyboard: the WHOLE sheet docks on top of it — nothing sits covered
+   behind the keys and the Save row stays reachable mid-typing. --kb is the
+   shell-measured (or remembered) keyboard height from index.html. The
+   home-bar inset drops out while the keyboard covers that glass. */
+@media (max-width: 720px) {
+  html.kb-open .sheet {
+    bottom: var(--kb, 0px);
+    max-height: calc(100% - var(--sat, env(safe-area-inset-top, 0px)) - var(--kb, 0px) - 12px);
+  }
+  html.kb-open .sheet-body {
+    padding-bottom: 14px;
+  }
+}
+
+/* App feel: interactive chrome never text-selects or callouts on long-press,
+   and every tap answers with immediate pressed feedback. Inputs and note
+   text stay selectable — this list is chrome only. */
+.btn,
+.tab,
+.nav-link,
+.tag-chip,
+.tile,
+.more-row,
+.picker-row,
+.mic-btn,
+.seg button {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.tile:active {
+  transform: scale(0.985);
+}
+.more-row:active {
+  background: #17191d;
+}
+.picker-row:active {
+  background: var(--accent-soft);
+}
+.tag-chip:active {
+  filter: brightness(1.25);
+}
+.tab:active {
+  background: #17191d;
+}
+.mic-btn:active {
+  transform: scale(0.94);
 }
 
 /* Note capture */

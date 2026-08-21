@@ -146,8 +146,21 @@ export function NoteSheet({
   const title = edit ? 'Edit note' : player ? playerName(player) : 'Section note'
 
   useEffect(() => {
-    areaRef.current?.focus()
+    // On touch devices, focusing mid-entry makes the keyboard rise while the
+    // sheet is still sliding in — two animations fighting. Let the sheet land
+    // first; desktop has no keyboard animation, so it focuses instantly.
+    if (!('ontouchstart' in window)) {
+      areaRef.current?.focus()
+      return
+    }
+    const t = window.setTimeout(() => areaRef.current?.focus(), 290)
+    return () => window.clearTimeout(t)
   }, [])
+
+  // Buttons tapped mid-typing must not steal focus from the textarea — a
+  // stolen focus drops the keyboard and the whole sheet bounces. preventDefault
+  // on mousedown keeps focus put while the click still fires.
+  const keepKeyboard = (e: React.MouseEvent) => e.preventDefault()
 
   const appendSpoken = useCallback((text: string) => {
     if (!text) return
@@ -250,6 +263,7 @@ export function NoteSheet({
           <button
             className={`mic-btn${listening ? ' live' : ''}`}
             onClick={toggle}
+            onMouseDown={keepKeyboard}
             aria-label={listening ? 'Stop dictation' : 'Dictate note'}
             aria-pressed={listening}
           >
@@ -266,6 +280,7 @@ export function NoteSheet({
             aria-checked={tag === t}
             className={`tag-chip${t === 'Win' ? ' tag-win' : ''}${tag === t ? ' on' : ''}`}
             onClick={() => setTag(tag === t ? null : t)}
+            onMouseDown={keepKeyboard}
           >
             {t}
           </button>
@@ -321,11 +336,11 @@ export function NoteSheet({
 
       <div className="sheet-actions note-save-row">
         {edit && (
-          <button className="btn tall ghost danger note-delete" onClick={del}>
+          <button className="btn tall ghost danger note-delete" onClick={del} onMouseDown={keepKeyboard}>
             <Trash size={15} />
           </button>
         )}
-        <button className="btn tall primary" disabled={!ready} onClick={save}>
+        <button className="btn tall primary" disabled={!ready} onClick={save} onMouseDown={keepKeyboard}>
           {ready ? (edit ? 'Save changes' : `Save — ${tag}`) : !body.trim() ? 'Type or dictate first' : 'Pick a tag'}
         </button>
       </div>
