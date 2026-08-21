@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from 'react'
 import { BPM_MAX, BPM_MIN, type Subdivision, type Timbre } from '../../audio/metronome'
 import { metronome } from '../../audio/metronome'
-import { useMetronome, useTapTempo } from '../../state/useMetronome'
+import { useMetronome } from '../../state/useMetronome'
 import { BeatLights } from './BeatLights'
 import { SUBDIVISIONS, TEMPO_PRESETS, TIMBRES, rangeStyle, tempoName, useDragTempo } from './shared'
 import { Minus, Pause, Play, Plus, Trend, Volume } from '../icons'
@@ -12,7 +12,6 @@ const THUMB_PX = 13
 
 export function MetronomeFull() {
   const { settings, running, update, setBpm, nudge, setTrainer, toggle, preview } = useMetronome()
-  const { tap, count } = useTapTempo(setBpm)
   const drag = useDragTempo(
     useCallback(() => metronome.settings.bpm, []),
     setBpm,
@@ -128,10 +127,6 @@ export function MetronomeFull() {
           >
             {running ? <Pause size={14} /> : <Play size={14} />}
             {running ? 'Stop' : 'Start'}
-          </button>
-          <button className="tap-btn" onClick={tap}>
-            Tap
-            <small>{count > 1 ? `${count}` : 'tempo'}</small>
           </button>
         </div>
 

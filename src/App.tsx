@@ -73,8 +73,9 @@ export default function App() {
           <TopLink to="/more" label="More" />
         </nav>
         <span className="nav-spacer" />
-        {/* Rehearsal is note-taking, not click practice — no transport there. */}
-        {pathname !== '/metronome' && pathname !== '/' && <MiniTransport />}
+        {/* The transport belongs to Chops only — and not on the metronome page,
+            which has the full controls. */}
+        {isChopsPath(pathname) && pathname !== '/metronome' && <MiniTransport />}
       </header>
 
       {isChopsPath(pathname) && <ChopsSubNav />}

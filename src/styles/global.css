@@ -683,33 +683,6 @@ input[type='range']:disabled {
   background: var(--accent-soft);
 }
 
-.tap-btn {
-  min-width: 92px;
-  height: 42px;
-  border-radius: var(--r-sm);
-  background: transparent;
-  border: 1px solid var(--line);
-  display: inline-flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 7px;
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--text-dim);
-  transition: color 0.14s, border-color 0.14s;
-}
-.tap-btn:hover {
-  border-color: #33363d;
-  color: var(--text);
-}
-.tap-btn small {
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-}
-
 /* Settings grid */
 .settings-grid {
   display: grid;
@@ -1782,18 +1755,24 @@ html {
 }
 
 /* Shared page scaffolding */
+/* Every tracker page shares the Rehearsal page's rhythm: 14px gutters, the
+   title 14px down, content following at the same beat. */
 .dl-page {
   width: 100%;
   max-width: 860px;
   margin: 0 auto;
-  padding: 18px 16px 56px;
+  padding: 0 14px 56px;
 }
 .page-head {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 10px;
-  margin-bottom: 14px;
+  margin: 14px 0 10px;
+}
+.dl-page > .page-title:first-child {
+  margin-top: 14px;
+  margin-bottom: 10px;
 }
 .page-title {
   margin: 0;
@@ -3784,6 +3763,10 @@ tr.gate .hm-row-label {
   select.input,
   textarea.input {
     font-size: 16px;
+  }
+  /* Keyboard shortcut hints mean nothing to a thumb. */
+  .hint-bar {
+    display: none;
   }
   .toast {
     bottom: calc(var(--tab-h) + 14px + var(--sab-fb, env(safe-area-inset-bottom, 0px)));
