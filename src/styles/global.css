@@ -3137,6 +3137,23 @@ html[data-mode='outdoor'] .hm-cell.st-bg-not_started {
 .section-seg {
   max-width: 340px;
 }
+/* Stacked controls must read as one system: same width, same height, same
+   edges — never two pills of slightly different sizes. */
+@media (max-width: 720px) {
+  .section-page .scope-seg,
+  .section-page .section-seg,
+  .section-page .weak-seg {
+    width: 100%;
+    max-width: none;
+    flex: 1 1 100%;
+  }
+  .section-page .seg button {
+    min-height: 42px;
+  }
+  .section-page .page-head {
+    flex-wrap: wrap;
+  }
+}
 
 /* Momentum strip — checkpoint passes per week. */
 .trend-block {
@@ -3195,49 +3212,38 @@ html[data-mode='outdoor'] .trend-bar {
   background: rgba(0, 0, 0, 0.08);
 }
 
-/* Skills matrix — the forced ranking grid. */
+/* Skills matrix — the forced ranking. Skill name above its row, player chips
+   splitting the full width, so EVERY player in the section is on screen at
+   once — the weakest slot is the whole point and must never be off-canvas. */
 .skills-matrix {
   display: flex;
   flex-direction: column;
   gap: 14px;
   align-items: flex-start;
-}
-.sk-scroll {
   width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
 }
-.sk-table {
-  border-collapse: separate;
-  border-spacing: 4px;
+.sk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 620px;
 }
-.sk-table th {
-  font-weight: 600;
-}
-.sk-corner {
-  min-width: 96px;
-}
-.sk-rank {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--text-faint);
-  padding-bottom: 2px;
-}
-.sk-rank.weak {
-  color: var(--danger);
-}
-.sk-skill {
-  text-align: left;
-  padding-right: 6px;
+.sk-block {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
 }
 .sk-skill-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12.5px;
-  font-weight: 650;
+  align-self: flex-start;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
   color: var(--text);
-  padding: 6px 0;
+  padding: 2px 0;
   text-align: left;
   line-height: 1.25;
 }
@@ -3245,39 +3251,61 @@ html[data-mode='outdoor'] .trend-bar {
   color: var(--text-faint);
   flex: none;
 }
+.sk-row {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+}
 .sk-cell {
-  min-width: 74px;
-  max-width: 108px;
-  min-height: 46px;
-  padding: 4px 8px;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 54px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 5px 3px;
   border-radius: var(--r-sm);
   background: var(--panel);
   border: 1px solid var(--line);
-  font-size: 12px;
-  font-weight: 600;
   color: var(--text-dim);
+  transition: border-color 0.13s, background 0.13s, transform 0.09s;
+}
+.sk-cell i {
+  font-style: normal;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--text-faint);
+  line-height: 1;
+}
+.sk-cell span {
+  font-size: 12px;
+  font-weight: 650;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  width: 100%;
-  transition: border-color 0.13s, background 0.13s, transform 0.09s;
+  line-height: 1.3;
 }
 .sk-cell:active {
   transform: scale(0.95);
 }
-.sk-cell.armed {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-.sk-table td.weak .sk-cell {
+.sk-cell.weak {
   border-color: rgba(194, 86, 79, 0.4);
   background: rgba(194, 86, 79, 0.08);
   color: var(--text);
 }
-.sk-table td.weak .sk-cell.armed {
+.sk-cell.weak i {
+  color: var(--danger);
+}
+.sk-cell.armed,
+.sk-cell.weak.armed {
   border-color: var(--accent);
   background: var(--accent-soft);
+  color: var(--accent);
+}
+.sk-cell.armed i {
   color: var(--accent);
 }
 .sk-hint {

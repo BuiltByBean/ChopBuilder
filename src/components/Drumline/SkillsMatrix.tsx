@@ -76,57 +76,43 @@ export function SkillsMatrix() {
         </p>
       ) : (
         <>
-          <div className="sk-scroll">
-            <table className="sk-table">
-              <thead>
-                <tr>
-                  <th className="sk-corner" aria-label="Skill" />
-                  {roster.map((_, i) => (
-                    <th key={i} className={`sk-rank${i === n - 1 ? ' weak' : ''}`}>
-                      {i + 1}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {list.map((sk) => {
-                  const ranked = rankingFor(skillRanks, sk.id, section, players)
-                  return (
-                    <tr key={sk.id}>
-                      <th className="sk-skill">
-                        <button className="sk-skill-btn" onClick={() => setManage(sk)}>
-                          {sk.name}
-                          <Pencil size={11} />
+          <div className="sk-list">
+            {list.map((sk) => {
+              const ranked = rankingFor(skillRanks, sk.id, section, players)
+              return (
+                <section key={sk.id} className="sk-block">
+                  <button className="sk-skill-btn" onClick={() => setManage(sk)}>
+                    {sk.name}
+                    <Pencil size={11} />
+                  </button>
+                  <div className="sk-row">
+                    {ranked.map((p, i) => {
+                      const armed = sel?.skillId === sk.id && sel.playerId === p.id
+                      return (
+                        <button
+                          key={p.id}
+                          className={`sk-cell${armed ? ' armed' : ''}${i === n - 1 ? ' weak' : ''}`}
+                          onClick={() => {
+                            if (!sel || sel.skillId !== sk.id) {
+                              setSel({ skillId: sk.id, playerId: p.id })
+                            } else if (sel.playerId === p.id) {
+                              setSel(null)
+                            } else {
+                              move(sk.id, sel.playerId, i)
+                              setSel(null)
+                            }
+                          }}
+                          aria-label={`${playerName(p)} — rank ${i + 1} of ${n} at ${sk.name}`}
+                        >
+                          <i>{i + 1}</i>
+                          <span>{playerName(p)}</span>
                         </button>
-                      </th>
-                      {ranked.map((p, i) => {
-                        const armed = sel?.skillId === sk.id && sel.playerId === p.id
-                        return (
-                          <td key={p.id} className={i === n - 1 ? 'weak' : undefined}>
-                            <button
-                              className={`sk-cell${armed ? ' armed' : ''}`}
-                              onClick={() => {
-                                if (!sel || sel.skillId !== sk.id) {
-                                  setSel({ skillId: sk.id, playerId: p.id })
-                                } else if (sel.playerId === p.id) {
-                                  setSel(null)
-                                } else {
-                                  move(sk.id, sel.playerId, i)
-                                  setSel(null)
-                                }
-                              }}
-                              aria-label={`${playerName(p)} — rank ${i + 1} of ${n} at ${sk.name}`}
-                            >
-                              {playerName(p)}
-                            </button>
-                          </td>
-                        )
-                      })}
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                      )
+                    })}
+                  </div>
+                </section>
+              )
+            })}
           </div>
 
           <p className="sk-hint">
