@@ -160,7 +160,7 @@ function DiagnosticsCard() {
   )
 }
 
-function PinSheet({ mode, onClose }: { mode: 'set' | 'clear'; onClose: () => void }) {
+export function PinSheet({ mode, onClose }: { mode: 'set' | 'clear'; onClose: () => void }) {
   const setPin = usePrefs((s) => s.setPin)
   const clearPin = usePrefs((s) => s.clearPin)
   const tryUnlock = usePrefs((s) => s.tryUnlock)

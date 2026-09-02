@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   instrumentGroup,
@@ -7,13 +7,17 @@ import {
   type Player,
 } from '../db/drumline'
 import {
+  absentIds,
   frontierOf,
   progressOf,
   stableOrder,
   useDrumline,
 } from '../state/useDrumline'
+import { usePrefs } from '../state/usePrefs'
 import { NoteSheet } from '../components/Drumline/NoteSheet'
-import { NoteIcon, UserPlus } from '../components/icons'
+import { RollCallSheet } from '../components/Drumline/RollCallSheet'
+import { PinSheet } from './MorePage'
+import { Close, Lock, NoteIcon, UserPlus, Users } from '../components/icons'
 
 /**
  * Rehearsal Mode — the landing screen. Standing in a parking lot with sticks
@@ -26,6 +30,7 @@ export function RehearsalPage() {
   const notes = useDrumline((s) => s.notes)
 
   const [sheet, setSheet] = useState<{ playerId: string | null } | null>(null)
+  const [rollCall, setRollCall] = useState(false)
 
   const active = useMemo(() => players.filter((p) => p.active), [players])
   // Fixed positions: instrument, then label. A tile that hops around after a
@@ -49,11 +54,18 @@ export function RehearsalPage() {
       if (!n.resolved && n.playerId) map.set(n.playerId, (map.get(n.playerId) ?? 0) + 1)
     return map
   }, [notes])
+  const absent = useMemo(() => absentIds(notes), [notes])
 
   return (
     <div className="rehearsal">
       <h2 className="page-title rehearsal-title">Rehearsal</h2>
-      <RehearsalBar onSectionNote={() => setSheet({ playerId: null })} />
+      <RehearsalBar
+        onSectionNote={() => setSheet({ playerId: null })}
+        onRollCall={() => setRollCall(true)}
+        absentCount={absent.size}
+      />
+
+      {active.length > 0 && <PinNudge />}
 
       {loaded && active.length === 0 && (
         <div className="empty">
@@ -78,6 +90,7 @@ export function RehearsalPage() {
                 key={p.id}
                 player={p}
                 openNotes={openNoteCount.get(p.id) ?? 0}
+                absent={absent.has(p.id)}
                 onNote={() => setSheet({ playerId: p.id })}
               />
             ))}
@@ -86,12 +99,71 @@ export function RehearsalPage() {
       ))}
 
       {sheet && <NoteSheet playerId={sheet.playerId} onClose={() => setSheet(null)} />}
+      {rollCall && <RollCallSheet onClose={() => setRollCall(false)} />}
     </div>
   )
 }
 
-/** The section note button + a shortcut to every note. Capture chrome only. */
-function RehearsalBar({ onSectionNote }: { onSectionNote: () => void }) {
+const PIN_NUDGE_KEY = 'chopbuilder:pinNudgeDismissed'
+
+/**
+ * One-line reminder until a PIN exists on this device: the tracker holds
+ * coaching notes about minors. "Set PIN" opens the lock sheet right here.
+ */
+function PinNudge() {
+  const lockEnabled = usePrefs((s) => s.lockEnabled)
+  const [dismissed, setDismissed] = useState(true)
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    try {
+      setDismissed(!!localStorage.getItem(PIN_NUDGE_KEY))
+    } catch {
+      setDismissed(false)
+    }
+  }, [])
+
+  if (lockEnabled || dismissed) return null
+  return (
+    <>
+      <div className="pin-nudge" role="note">
+        <Lock size={15} />
+        <span>
+          Notes about minors live here — <b>lock the app</b> with a PIN.
+        </span>
+        <button className="btn sm primary" onClick={() => setOpen(true)}>
+          Set PIN
+        </button>
+        <button
+          className="btn icon xs ghost"
+          aria-label="Dismiss"
+          onClick={() => {
+            try {
+              localStorage.setItem(PIN_NUDGE_KEY, '1')
+            } catch {
+              /* ignore */
+            }
+            setDismissed(true)
+          }}
+        >
+          <Close size={14} />
+        </button>
+      </div>
+      {open && <PinSheet mode="set" onClose={() => setOpen(false)} />}
+    </>
+  )
+}
+
+/** Section note, roll call, and a shortcut to every note. Capture chrome only. */
+function RehearsalBar({
+  onSectionNote,
+  onRollCall,
+  absentCount,
+}: {
+  onSectionNote: () => void
+  onRollCall: () => void
+  absentCount: number
+}) {
   const openNotes = useDrumline((s) => s.notes.filter((n) => !n.resolved).length)
 
   return (
@@ -99,6 +171,11 @@ function RehearsalBar({ onSectionNote }: { onSectionNote: () => void }) {
       <button className="btn tall section-note-btn" onClick={onSectionNote}>
         <NoteIcon size={16} />
         Section note
+      </button>
+      <button className={`btn tall roll-btn${absentCount ? ' has-absent' : ''}`} onClick={onRollCall}>
+        <Users size={16} />
+        Roll call
+        {absentCount > 0 && <i className="icon-badge warn">{absentCount}</i>}
       </button>
       <Link to="/notes" className="btn icon tall notes-link" aria-label="All notes" title="All notes">
         <NoteIcon size={18} />
@@ -111,10 +188,12 @@ function RehearsalBar({ onSectionNote }: { onSectionNote: () => void }) {
 function PlayerTile({
   player,
   openNotes,
+  absent,
   onNote,
 }: {
   player: Player
   openNotes: number
+  absent: boolean
   onNote: () => void
 }) {
   const navigate = useNavigate()
@@ -140,6 +219,7 @@ function PlayerTile({
       : `Gr ${player.gradeLevel}`
   if (player.isSectionLeader) sub = sub ? `${sub} · SL` : 'SL'
   if (sub === name) sub = ''
+  if (absent) sub = 'Absent'
 
   // Long-press → player detail; tap → note sheet. Movement cancels (scrolling).
   const timer = useRef<number | null>(null)
@@ -155,7 +235,7 @@ function PlayerTile({
 
   return (
     <button
-      className="ptile"
+      className={`ptile${absent ? ' absent' : ''}`}
       onPointerDown={(e) => {
         longFired.current = false
         start.current = { x: e.clientX, y: e.clientY }

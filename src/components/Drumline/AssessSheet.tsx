@@ -10,7 +10,7 @@ import {
   type Player,
   type StatusChange,
 } from '../../db/drumline'
-import { stableOrder, statusOf, tempoOf, useDrumline } from '../../state/useDrumline'
+import { absentIds, stableOrder, statusOf, tempoOf, useDrumline } from '../../state/useDrumline'
 import { useRehearsalBpm } from '../../state/useRehearsalBpm'
 import { useToast } from '../../state/useToast'
 import { Sheet } from '../Sheet'
@@ -24,6 +24,7 @@ import { GateStar, StatusChip } from './common'
  */
 export function AssessSheet({ cp, onClose }: { cp: Checkpoint; onClose: () => void }) {
   const players = useDrumline((s) => s.players)
+  const notes = useDrumline((s) => s.notes)
   const pcs = useDrumline((s) => s.pcs)
   const setStatus = useDrumline((s) => s.setStatus)
   const undoStatus = useDrumline((s) => s.undoStatus)
@@ -34,6 +35,9 @@ export function AssessSheet({ cp, onClose }: { cp: Checkpoint; onClose: () => vo
   const changes = useRef<StatusChange[]>([])
 
   const roster = useMemo(() => stableOrder(players.filter((p) => p.active)), [players])
+  // Today's roll call: absent players sit out of "Everyone" and the count.
+  const absent = useMemo(() => absentIds(notes), [notes])
+  const present = useMemo(() => roster.filter((p) => !absent.has(p.id)), [roster, absent])
   const groups = useMemo(() => {
     const out: { name: string; members: Player[] }[] = []
     for (const p of roster) {
@@ -61,7 +65,7 @@ export function AssessSheet({ cp, onClose }: { cp: Checkpoint; onClose: () => vo
   }
 
   const applyAll = (to: CheckStatus) => {
-    for (const p of roster) apply(p, to)
+    for (const p of present) apply(p, to)
   }
 
   const close = () => {
@@ -77,7 +81,7 @@ export function AssessSheet({ cp, onClose }: { cp: Checkpoint; onClose: () => vo
     onClose()
   }
 
-  const passed = roster.filter((p) => statusOf(pcs, p.id, cp.id) === 'passed').length
+  const passed = present.filter((p) => statusOf(pcs, p.id, cp.id) === 'passed').length
 
   return (
     <Sheet
@@ -85,7 +89,7 @@ export function AssessSheet({ cp, onClose }: { cp: Checkpoint; onClose: () => vo
       onClose={close}
       meta={
         <span className="bpm-stamp">
-          {passed}/{roster.length} passed
+          {passed}/{present.length} passed
         </span>
       }
       footer={
@@ -102,7 +106,9 @@ export function AssessSheet({ cp, onClose }: { cp: Checkpoint; onClose: () => vo
       </p>
 
       <div className="assess-all">
-        <span className="assess-all-label">Everyone</span>
+        <span className="assess-all-label">
+          Everyone{absent.size > 0 ? ` here (${absent.size} absent)` : ''}
+        </span>
         <div className="seg assess-seg">
           {STATUSES.map((s) => (
             <button key={s} className={`st-${s}`} onClick={() => applyAll(s)} title={STATUS_LABEL[s]}>
@@ -134,13 +140,18 @@ export function AssessSheet({ cp, onClose }: { cp: Checkpoint; onClose: () => vo
             {g.members.map((p) => {
               const st = statusOf(pcs, p.id, cp.id)
               const t = tempoOf(pcs, p.id, cp.id)
+              const out = absent.has(p.id)
               return (
-                <div key={p.id} className="cp-row assess-row">
+                <div key={p.id} className={`cp-row assess-row${out ? ' absent' : ''}`}>
                   <span className="cp-name">
                     {playerName(p)}
                     {st === 'passed' && t != null && <span className="cp-tempo">@ {t}</span>}
                   </span>
-                  <StatusChip status={st} onClick={() => apply(p, nextStatus(st))} />
+                  {out ? (
+                    <span className="st-chip absent-chip">Absent</span>
+                  ) : (
+                    <StatusChip status={st} onClick={() => apply(p, nextStatus(st))} />
+                  )}
                 </div>
               )
             })}

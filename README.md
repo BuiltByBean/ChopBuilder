@@ -24,6 +24,11 @@ before the next rep. Logging a note about a player takes under 5 seconds and 3 t
   need them. Long-press a tile to jump to that player's checkpoints. A persistent
   Section-note button covers the whole line. If the metronome is running, every note
   and status change is stamped with its BPM.
+- **Roll call** — tap the players who aren't here; their tiles dim, the line-wide
+  assess sheet skips them, and the absence lands in that day's session as an
+  Attendance note. Tap again when they show up late.
+- **App lock nudge** — until a PIN is set on the device, the rehearsal screen carries a
+  one-line reminder with a Set PIN button (the tracker holds notes about minors).
 - **Checkpoints** — 35 seeded technique standards across six phases (The Stroke → Time
   and Space → Two Heights → Diddles/Rolls/Flams → Marching Integration → Ensemble),
   with phase gates marked ★. Add, rename, reorder, and retire them in More →
@@ -38,9 +43,10 @@ before the next rep. Logging a note about a player takes under 5 seconds and 3 t
 - **Skills** (the other Section tab) — a per-section forced ranking for each skill:
   every player holds one slot, strongest first, no ties. Rows nobody has ranked yet
   show dimmed in roster order until you rank them (or tap "keep this order").
-- **Sessions** — rehearsal log. New sessions pre-fill focus from the line's lowest
-  incomplete checkpoint and carry the previous session's "next time" forward. Notes
-  taken that day attach automatically.
+- **Sessions** — rehearsal log. The form opens on a recap of the day — passes logged
+  (which checkpoints moved), notes and wins, who was absent — and pre-fills focus from
+  the line's lowest incomplete checkpoint, tempo from the fastest clean pass logged
+  today, and last session's "next time". Notes taken that day attach automatically.
 - **Recordings** — record or import reference audio, mark baselines, and play any two
   back to back (the "week 1 vs now" demo for the kids).
 - **No confirmations on capture** — optimistic writes with an Undo toast.

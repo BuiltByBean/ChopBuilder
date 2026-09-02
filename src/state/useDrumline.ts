@@ -67,7 +67,11 @@ interface DrumlineState {
     bpm?: number | null
     /** Backdate for notes typed up after the rehearsal; defaults to now. */
     createdAt?: number
+    /** Born resolved — roll-call absences are a record, not a to-do. */
+    resolved?: boolean
   }) => Note
+  /** Roll call: mark a player absent (or present again) for a calendar day. */
+  setAbsent: (playerId: string, absent: boolean, day?: number) => void
   removeNote: (id: string) => void
   setNoteResolved: (id: string, resolved: boolean) => void
   updateNote: (id: string, patch: Partial<Omit<Note, 'id'>>) => void
@@ -200,12 +204,27 @@ export const useDrumline = create<DrumlineState>((set, get) => ({
       checkpointId: input.checkpointId ?? null,
       bpm: input.bpm ?? null,
       createdAt: input.createdAt ?? Date.now(),
-      resolved: false,
-      resolvedAt: null,
+      resolved: !!input.resolved,
+      resolvedAt: input.resolved ? (input.createdAt ?? Date.now()) : null,
     }
     set((s) => ({ notes: [...s.notes, n] }))
     persist(api.putNote(n))
     return n
+  },
+
+  setAbsent: (playerId, absent, day = Date.now()) => {
+    const existing = get().notes.filter(
+      (n) => n.playerId === playerId && isAbsentNote(n) && sameLocalDay(n.createdAt, day),
+    )
+    if (absent) {
+      if (existing.length > 0) return
+      // Stamped at local noon of the day so it attaches to that day's session
+      // whether roll was taken at 3pm or typed up the next morning.
+      const at = sameLocalDay(day, Date.now()) ? Date.now() : localNoon(new Date(day))
+      get().addNote({ playerId, body: ABSENT_BODY, tag: 'Attendance', createdAt: at, resolved: true })
+    } else {
+      for (const n of existing) get().removeNote(n.id)
+    }
   },
 
   removeNote: (id) => {
@@ -334,6 +353,24 @@ export const useDrumline = create<DrumlineState>((set, get) => ({
     await get().load()
   },
 }))
+
+// --- attendance -------------------------------------------------------------------
+
+/**
+ * An absence is an Attendance note whose body is exactly "Absent" — no new
+ * store, no migration, and it syncs, exports and lands in the day's session
+ * like any other note. Born resolved so it never counts as an open note.
+ */
+export const ABSENT_BODY = 'Absent'
+export const isAbsentNote = (n: Note) => n.tag === 'Attendance' && n.body === ABSENT_BODY
+
+/** Players marked absent on a calendar day (defaults to today). */
+export function absentIds(notes: Note[], day = Date.now()): Set<string> {
+  const out = new Set<string>()
+  for (const n of notes)
+    if (n.playerId && isAbsentNote(n) && sameLocalDay(n.createdAt, day)) out.add(n.playerId)
+  return out
+}
 
 // --- derived helpers ----------------------------------------------------------
 

@@ -61,7 +61,9 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="nav">
+      {/* On phones the header holds only the Chops transport; everywhere else
+          it collapses to the status-bar inset so the page title moves up. */}
+      <header className={`nav${isChopsPath(pathname) && pathname !== '/metronome' ? '' : ' nav-empty'}`}>
         <nav className="nav-links top-nav">
           <TopLink to="/" label="Rehearsal" end />
           <TopLink to="/section" label="Section" />

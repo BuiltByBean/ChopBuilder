@@ -1,11 +1,15 @@
 import { useMemo, useState } from 'react'
 import { playerName, type Session } from '../db/drumline'
 import {
+  absentIds,
+  fmtDay,
   fmtDayYear,
   fmtTime,
   fromDateInput,
+  isAbsentNote,
   notesForSession,
   orderedCheckpoints,
+  sameLocalDay,
   statusOf,
   toDateInput,
   useDrumline,
@@ -147,11 +151,82 @@ function SessionDetail({ session, onEdit }: { session: Session; onEdit: () => vo
   )
 }
 
+/**
+ * What actually happened on a day, from the records the app already keeps:
+ * passes logged, notes taken (wins called out), who was absent. Shown at the
+ * top of the session form so the write-up starts from facts, not memory.
+ */
+function DayRecap({ day }: { day: number }) {
+  const history = useDrumline((s) => s.history)
+  const notes = useDrumline((s) => s.notes)
+  const players = useDrumline((s) => s.players)
+  const checkpoints = useDrumline((s) => s.checkpoints)
+
+  const recap = useMemo(() => {
+    const byId = new Map(players.map((p) => [p.id, p]))
+    const cpById = new Map(checkpoints.map((c) => [c.id, c]))
+    const passes = history.filter((h) => h.to === 'passed' && sameLocalDay(h.at, day))
+    const dayNotes = notes.filter((n) => sameLocalDay(n.createdAt, day) && !isAbsentNote(n))
+    const wins = dayNotes.filter((n) => n.tag === 'Win')
+    const absent = [...absentIds(notes, day)]
+      .map((id) => byId.get(id))
+      .filter((p): p is NonNullable<typeof p> => !!p)
+    // Which checkpoints moved, most passes first.
+    const perCp = new Map<string, number>()
+    for (const h of passes) perCp.set(h.checkpointId, (perCp.get(h.checkpointId) ?? 0) + 1)
+    const moved = [...perCp.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([id, n]) => ({ name: cpById.get(id)?.name ?? 'Checkpoint', n }))
+    const players_ = new Set(passes.map((h) => h.playerId)).size
+    return { passes: passes.length, players: players_, notes: dayNotes.length, wins: wins.length, absent, moved }
+  }, [history, notes, players, checkpoints, day])
+
+  const empty = recap.passes === 0 && recap.notes === 0 && recap.absent.length === 0
+  return (
+    <section className="recap card">
+      <h5 className="section-label">Recap · {fmtDay(day)}</h5>
+      {empty ? (
+        <p className="quiet-empty">Nothing logged that day yet.</p>
+      ) : (
+        <>
+          <div className="recap-stats">
+            <span>
+              <b>{recap.passes}</b> pass{recap.passes === 1 ? '' : 'es'}
+              {recap.players > 0 && ` · ${recap.players} player${recap.players === 1 ? '' : 's'}`}
+            </span>
+            <span>
+              <b>{recap.notes}</b> note{recap.notes === 1 ? '' : 's'}
+              {recap.wins > 0 && ` · ${recap.wins} win${recap.wins === 1 ? '' : 's'}`}
+            </span>
+            <span className={recap.absent.length ? 'warn' : ''}>
+              <b>{recap.absent.length}</b> absent
+            </span>
+          </div>
+          {recap.moved.length > 0 && (
+            <ul className="recap-list">
+              {recap.moved.map((m) => (
+                <li key={m.name}>
+                  <b>{m.n}</b> passed · {m.name}
+                </li>
+              ))}
+            </ul>
+          )}
+          {recap.absent.length > 0 && (
+            <p className="recap-absent">Absent: {recap.absent.map((p) => playerName(p)).join(', ')}</p>
+          )}
+        </>
+      )}
+    </section>
+  )
+}
+
 function SessionFormSheet({ initial, onClose }: { initial?: Session; onClose: () => void }) {
   const sessions = useDrumline((s) => s.sessions)
   const players = useDrumline((s) => s.players)
   const checkpoints = useDrumline((s) => s.checkpoints)
   const pcs = useDrumline((s) => s.pcs)
+  const history = useDrumline((s) => s.history)
   const addSession = useDrumline((s) => s.addSession)
   const updateSession = useDrumline((s) => s.updateSession)
   const show = useToast((s) => s.show)
@@ -174,10 +249,21 @@ function SessionFormSheet({ initial, onClose }: { initial?: Session; onClose: ()
     return prev?.nextTime ?? ''
   }, [sessions])
 
+  // A new session's tempo starts at the fastest clean tempo logged today.
+  const todaysTop = useMemo(() => {
+    let top = 0
+    for (const h of history)
+      if (h.to === 'passed' && h.tempoPassed && sameLocalDay(h.at, Date.now()))
+        top = Math.max(top, h.tempoPassed)
+    return top
+  }, [history])
+
   const [date, setDate] = useState(toDateInput(initial?.date ?? Date.now()))
   const [duration, setDuration] = useState(initial?.durationMinutes ? String(initial.durationMinutes) : '')
   const [focus, setFocus] = useState(initial?.focus ?? suggestion)
-  const [tempo, setTempo] = useState(initial?.tempoAchieved ? String(initial.tempoAchieved) : '')
+  const [tempo, setTempo] = useState(
+    initial?.tempoAchieved ? String(initial.tempoAchieved) : todaysTop ? String(todaysTop) : '',
+  )
   const [whatWorked, setWhatWorked] = useState(initial?.whatWorked ?? '')
   const [nextTime, setNextTime] = useState(initial?.nextTime ?? lastNextTime)
 
@@ -206,6 +292,7 @@ function SessionFormSheet({ initial, onClose }: { initial?: Session; onClose: ()
           onClose()
         }}
       >
+        {date && <DayRecap day={fromDateInput(date)} />}
         <div className="form-row">
           <div className="field grow">
             <label htmlFor="ss-date">Date</label>
