@@ -15,18 +15,19 @@ import {
   gateReports,
   orderedCheckpoints,
   passesPerWeek,
-  rosterOrder,
   sectionPlayers,
   sectionsOf,
+  stableOrder,
   statusOf,
   useDrumline,
   weakestCheckpoints,
 } from '../state/useDrumline'
-import { usePrefs } from '../state/usePrefs'
+import { useRehearsalBpm } from '../state/useRehearsalBpm'
 import { useToast } from '../state/useToast'
 import { Sheet } from '../components/Sheet'
 import { GateStar } from '../components/Drumline/common'
 import { NoteSheet } from '../components/Drumline/NoteSheet'
+import { AssessSheet } from '../components/Drumline/AssessSheet'
 import { SkillsMatrix } from '../components/Drumline/SkillsMatrix'
 import { Check, Pencil } from '../components/icons'
 import type { SectionName } from '../db/drumline'
@@ -42,10 +43,10 @@ export function SectionPage() {
   const players = useDrumline((s) => s.players)
   const checkpoints = useDrumline((s) => s.checkpoints)
   const pcs = useDrumline((s) => s.pcs)
-  const notes = useDrumline((s) => s.notes)
   const loaded = useDrumline((s) => s.loaded)
 
   const [cell, setCell] = useState<{ player: Player; cp: Checkpoint } | null>(null)
+  const [assess, setAssess] = useState<Checkpoint | null>(null)
   const [mode, setMode] = useState<'checkpoints' | 'skills'>(() => {
     try {
       return localStorage.getItem(MODE_KEY) === 'skills' ? 'skills' : 'checkpoints'
@@ -63,10 +64,9 @@ export function SectionPage() {
   }
 
   const active = useMemo(() => players.filter((p) => p.active), [players])
-  const cols = useMemo(
-    () => rosterOrder(active, checkpoints, pcs, notes),
-    [active, checkpoints, pcs, notes],
-  )
+  // Same fixed column order as the rehearsal tiles: the grid is read by
+  // position, so the columns can't reshuffle as statuses change.
+  const cols = useMemo(() => stableOrder(active), [active])
   const rows = useMemo(() => orderedCheckpoints(checkpoints), [checkpoints])
   const gates = useMemo(() => gateReports(checkpoints, players, pcs), [checkpoints, players, pcs])
 
@@ -129,6 +129,7 @@ export function SectionPage() {
                   cols={cols}
                   phaseHead={phaseHead}
                   onCell={(player) => setCell({ player, cp })}
+                  onRow={() => setAssess(cp)}
                 />
               )
             })}
@@ -143,6 +144,9 @@ export function SectionPage() {
           </span>
         ))}
       </div>
+      <p className="grid-hint hm-hint">
+        Tap a cell to set one player · tap a checkpoint name to assess the whole line
+      </p>
 
       <section className="gate-block">
         <h4 className="section-label">Phase gates</h4>
@@ -184,6 +188,7 @@ export function SectionPage() {
       {cell && (
         <SetStatusSheet player={cell.player} cp={cell.cp} onClose={() => setCell(null)} />
       )}
+      {assess && <AssessSheet cp={assess} onClose={() => setAssess(null)} />}
         </>
       )}
     </div>
@@ -272,11 +277,13 @@ function PhaseAwareRow({
   cols,
   phaseHead,
   onCell,
+  onRow,
 }: {
   cp: Checkpoint
   cols: Player[]
   phaseHead: boolean
   onCell: (p: Player) => void
+  onRow: () => void
 }) {
   const pcs = useDrumline((s) => s.pcs)
   return (
@@ -290,8 +297,10 @@ function PhaseAwareRow({
       )}
       <tr className={cp.gateFlag ? 'gate' : undefined}>
         <th className="hm-row-label">
-          {cp.gateFlag && <GateStar size={11} />}
-          <span>{cp.name}</span>
+          <button className="hm-row-btn" onClick={onRow} aria-label={`Assess the line: ${cp.name}`}>
+            {cp.gateFlag && <GateStar size={11} />}
+            <span>{cp.name}</span>
+          </button>
         </th>
         {cols.map((p) => {
           const st = statusOf(pcs, p.id, cp.id)
@@ -323,7 +332,7 @@ function SetStatusSheet({
   const pcs = useDrumline((s) => s.pcs)
   const setStatus = useDrumline((s) => s.setStatus)
   const undoStatus = useDrumline((s) => s.undoStatus)
-  const rehearsalBpm = usePrefs((s) => s.rehearsalBpm)
+  const rehearsalBpm = useRehearsalBpm()
   const show = useToast((s) => s.show)
   const [askTempo, setAskTempo] = useState(false)
   const [tempo, setTempo] = useState(rehearsalBpm ? String(rehearsalBpm) : '')

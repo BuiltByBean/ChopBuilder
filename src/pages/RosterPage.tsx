@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   INSTRUMENTS,
+  isPositionLabel,
   playerName,
   positionName,
   type Instrument,
@@ -67,7 +68,9 @@ export function RosterPage() {
               {!p.active && <span className="bench-badge">Benched</span>}
             </span>
             <span className="roster-meta">
-              {p.instrument} · Gr {p.gradeLevel} · Yr {p.yearsInProgram + 1}
+              {isPositionLabel(p)
+                ? `${p.instrument} · no name stored`
+                : `${p.instrument} · Gr ${p.gradeLevel} · Yr ${p.yearsInProgram + 1}`}
             </span>
             <Pencil size={14} className="roster-pencil" />
           </button>

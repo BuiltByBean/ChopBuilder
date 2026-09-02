@@ -6,7 +6,7 @@ import {
   type Checkpoint,
   type Player,
 } from '../../db/drumline'
-import { usePrefs } from '../../state/usePrefs'
+import { useRehearsalBpm } from '../../state/useRehearsalBpm'
 import { Sheet } from '../Sheet'
 import { Star } from '../icons'
 
@@ -69,7 +69,7 @@ export function PassSheet({
   onSave: (tempo: number | null) => void
   onClose: () => void
 }) {
-  const rehearsalBpm = usePrefs((s) => s.rehearsalBpm)
+  const rehearsalBpm = useRehearsalBpm()
   const [value, setValue] = useState(rehearsalBpm ? String(rehearsalBpm) : '')
   const ref = useRef<HTMLInputElement>(null)
 

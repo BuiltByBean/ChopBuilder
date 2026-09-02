@@ -75,6 +75,14 @@ export const playerName = (p: Player) =>
   p.lastInitial ? `${p.firstName} ${p.lastInitial}.` : p.firstName
 
 /**
+ * True for a player who was never given a name — their "name" is a position
+ * label from Build line ("Snare 2", "Bass 3", "Tenors 1"). Grade and year
+ * mean nothing for those rows, so the UI leaves them out.
+ */
+export const isPositionLabel = (p: Player) =>
+  !p.lastInitial && /^(snare|tenors|bass [1-5]|cymbals)( \d+| \(\d+\))?$/i.test(p.firstName.trim())
+
+/**
  * Auto-label for a player added without a name: "Snare 1", "Tenors 2",
  * "Bass 3" — the next label that isn't already on the roster. Lets a line be
  * built entirely from positions, no student names stored at all.

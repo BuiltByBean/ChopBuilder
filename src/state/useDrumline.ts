@@ -385,6 +385,19 @@ export function frontierOf(
 
 const instrumentIndex = (p: Player) => INSTRUMENTS.indexOf(p.instrument)
 
+const byLabel = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
+
+/**
+ * Stable roster order for the tap grids: instrument, then name — "Snare 10"
+ * after "Snare 2". Tiles must never move under a thumb mid-rehearsal, so this
+ * deliberately ignores progress and open notes (see rosterOrder for that).
+ */
+export function stableOrder(players: Player[]): Player[] {
+  return [...players].sort(
+    (a, b) => instrumentIndex(a) - instrumentIndex(b) || byLabel.compare(playerName(a), playerName(b)),
+  )
+}
+
 /**
  * Default roster order: by instrument, then by how much the player needs
  * attention — fewest passed checkpoints first, unresolved notes as tiebreak.
@@ -478,11 +491,9 @@ export function sectionsOf(players: Player[]): SectionName[] {
   return seen
 }
 
-/** Active players of one section, roster-stable order. */
+/** Active players of one section, roster-stable order (instrument, then label). */
 export function sectionPlayers(players: Player[], section: SectionName): Player[] {
-  return players
-    .filter((p) => p.active && instrumentGroup(p.instrument) === section)
-    .sort((a, b) => INSTRUMENTS.indexOf(a.instrument) - INSTRUMENTS.indexOf(b.instrument))
+  return stableOrder(players.filter((p) => p.active && instrumentGroup(p.instrument) === section))
 }
 
 /**
@@ -511,7 +522,18 @@ export function rankingFor(
   return out
 }
 
-/** 1-based rank of a player in a skill within their section, or null when unranked/solo. */
+/** Has the coach actually ordered this skill × section, or is it still the roster default? */
+export const isRanked = (
+  skillRanks: Record<string, SkillRank>,
+  skillId: string,
+  section: SectionName,
+) => !!skillRanks[skillRankId(skillId, section)]
+
+/**
+ * 1-based rank of a player in a skill within their section — null when the
+ * section is a solo, or when nobody has ranked it yet (an unranked section
+ * would otherwise read as "rank 1 at everything" for whoever sorts first).
+ */
 export function rankOf(
   skillRanks: Record<string, SkillRank>,
   skillId: string,
@@ -519,6 +541,7 @@ export function rankOf(
   players: Player[],
 ): { rank: number; of: number } | null {
   const section = instrumentGroup(player.instrument)
+  if (!isRanked(skillRanks, skillId, section)) return null
   const list = rankingFor(skillRanks, skillId, section, players)
   if (list.length < 2) return null
   const i = list.findIndex((p) => p.id === player.id)

@@ -3905,3 +3905,181 @@ tr.gate .hm-row-label {
     display: none;
   }
 }
+
+/* --- Review pass (first rehearsal): pinned sheet footer, folded note extras,
+   denser rehearsal tiles, line-wide assess sheet, honest unranked skills. --- */
+
+/* The sheet footer never scrolls: the primary action stays in thumb reach
+   with the keyboard up, however tall the body is. */
+.sheet-foot {
+  flex: none;
+  padding: 10px 16px calc(14px + var(--sab-fb, env(safe-area-inset-bottom, 0px)));
+  border-top: 1px solid var(--line-soft);
+  background: var(--panel);
+}
+.sheet.has-foot .sheet-body {
+  padding-bottom: 12px;
+}
+@media (max-width: 720px) {
+  html.kb-open .sheet-foot {
+    padding-bottom: 10px;
+  }
+}
+.sheet-foot .note-save-row,
+.sheet-foot .sheet-actions {
+  margin-top: 0;
+}
+
+/* Folded checkpoint/date row on the note sheet — one line, tap to expand. */
+.note-extras-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  margin-top: 12px;
+  padding: 9px 12px;
+  border: 1px dashed var(--line);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 12.5px;
+  text-align: left;
+}
+.note-extras-toggle span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.note-extras-toggle svg {
+  flex: none;
+}
+
+/* Three tiles across on phones so a 12-player line fits in two thumb-scrolls
+   instead of four. */
+@media (max-width: 480px) {
+  .tile-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .ptile {
+    min-height: 84px;
+    padding: 11px 10px 10px;
+  }
+  .ptile-name {
+    font-size: 14px;
+    padding-right: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .pdot {
+    top: 13px;
+    right: 10px;
+    width: 8px;
+    height: 8px;
+  }
+  .ptile-meta {
+    font-size: 10.5px;
+    padding-top: 6px;
+  }
+}
+
+/* Heatmap row labels are buttons now — the whole-line assess entry point. */
+.hm-row-btn {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  line-height: inherit;
+}
+.hm-row-btn:active {
+  color: var(--text);
+}
+.hm-row-btn svg {
+  flex: none;
+  margin-top: 1px;
+}
+.hm-hint {
+  margin: 8px 2px 0;
+}
+
+/* Assess sheet */
+.assess-all {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.assess-all-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.assess-seg button {
+  min-height: 40px;
+  font-weight: 600;
+}
+.assess-seg button.st-working {
+  color: var(--st1);
+}
+.assess-seg button.st-close {
+  color: var(--st2);
+}
+.assess-seg button.st-passed {
+  color: var(--st3);
+}
+.assess-seg button:hover {
+  background: var(--panel);
+}
+.assess-tempo {
+  margin-bottom: 14px;
+}
+.assess-tempo .input {
+  min-height: 44px;
+}
+.assess-group {
+  margin-bottom: 12px;
+}
+.assess-group .section-label {
+  margin: 0 0 6px;
+}
+.assess-row .cp-name {
+  font-weight: 600;
+}
+
+/* Skills: a row nobody has ranked yet is roster order, not a verdict. */
+.sk-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sk-confirm {
+  font-size: 11px;
+  color: var(--text-faint);
+  padding: 4px 8px;
+}
+.sk-block.unranked .sk-cell {
+  opacity: 0.55;
+  border-style: dashed;
+}
+.sk-block.unranked .sk-cell.armed {
+  opacity: 1;
+  border-style: solid;
+}
+
+/* Toasts stay one line — a wrapped pill reads as a blob. Messages are short by contract. */
+.toast {
+  white-space: nowrap;
+  max-width: calc(100% - 24px);
+}

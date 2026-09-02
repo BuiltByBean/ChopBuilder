@@ -1,24 +1,14 @@
 import { create } from 'zustand'
 
 /**
- * Small device-local preferences: the rehearsal BPM stamp and the app lock.
- * All of it stays in localStorage — none of it is worth an IDB round-trip and
- * the lock must be readable synchronously at boot. The app is dark-only by
- * the owner's choice; the old sunlight mode is gone.
+ * Small device-local preferences: the app lock. It stays in localStorage
+ * because the lock must be readable synchronously at boot. The app is
+ * dark-only by the owner's choice; the old sunlight mode is gone, and so is
+ * the pinned rehearsal BPM — notes now stamp the live metronome's tempo
+ * (see useRehearsalBpm).
  */
 
-const BPM_KEY = 'chopbuilder:rehearsalBpm'
 const LOCK_KEY = 'chopbuilder:lock'
-
-function readBpm(): number | null {
-  try {
-    const raw = localStorage.getItem(BPM_KEY)
-    const n = raw ? Number(raw) : NaN
-    return Number.isFinite(n) && n > 0 ? n : null
-  } catch {
-    return null
-  }
-}
 
 interface LockConfig {
   salt: string
@@ -45,13 +35,11 @@ async function hashPin(pin: string, salt: string): Promise<string> {
 }
 
 interface PrefsState {
-  rehearsalBpm: number | null
   /** Whether a PIN is configured on this device. */
   lockEnabled: boolean
   /** Whether the lock screen is currently up. */
   locked: boolean
 
-  setRehearsalBpm: (bpm: number | null) => void
   setPin: (pin: string) => Promise<void>
   clearPin: () => void
   tryUnlock: (pin: string) => Promise<boolean>
@@ -59,27 +47,18 @@ interface PrefsState {
 }
 
 const initialLock = readLock()
-// Devices that were left in the retired sunlight mode come back dark.
+// Devices that were left in the retired sunlight mode come back dark, and a
+// BPM pinned by the old rehearsal bar must not keep stamping every note.
 try {
   localStorage.removeItem('chopbuilder:outdoor')
+  localStorage.removeItem('chopbuilder:rehearsalBpm')
 } catch {
   /* ignore */
 }
 
 export const usePrefs = create<PrefsState>((set, get) => ({
-  rehearsalBpm: readBpm(),
   lockEnabled: !!initialLock,
   locked: !!initialLock,
-
-  setRehearsalBpm: (bpm) => {
-    set({ rehearsalBpm: bpm })
-    try {
-      if (bpm) localStorage.setItem(BPM_KEY, String(bpm))
-      else localStorage.removeItem(BPM_KEY)
-    } catch {
-      /* ignore */
-    }
-  },
 
   setPin: async (pin) => {
     const salt = Array.from(crypto.getRandomValues(new Uint8Array(16)))

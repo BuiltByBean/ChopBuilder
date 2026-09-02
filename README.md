@@ -3,12 +3,12 @@
 A drumline progress tracker and a precision metronome (20–300 BPM) with a sheet-music
 library — one offline-first app for running a battery and building your own chops.
 
-**Live app:** https://chopbuilder-production-40a9.up.railway.app
+**Live app:** https://chopbuilder-production.up.railway.app
 
 Everything runs in the browser and works fully offline; the app is a PWA you install
-from the browser menu. Tracker data (players, checkpoints, statuses, notes, sessions)
-syncs between your devices through a tiny Railway server when sync is enabled in
-More → Sync — offline-first, last-write-wins, nothing blocks on the network.
+from the browser menu. Tracker data (players, checkpoints, statuses, notes, sessions,
+skill rankings) syncs between your devices through a tiny Railway server, always on
+and with no setup — offline-first, last-write-wins, nothing blocks on the network.
 Recordings and the sheet-music library stay on the device that captured them.
 
 ## The drumline tracker
@@ -16,12 +16,14 @@ Recordings and the sheet-music library stay on the device that captured them.
 Built for a battery tech standing in a parking lot, holding sticks, with 25 seconds
 before the next rep. Logging a note about a player takes under 5 seconds and 3 taps.
 
-- **Rehearsal Mode** (the landing screen) — player tiles grouped by instrument, sorted
-  by who needs attention. Tap a tile → a sheet opens with the text field already
-  focused, a dictation mic, and tag chips; **tapping a tag saves and closes the sheet**.
-  Long-press a tile to jump to that player's checkpoints. A persistent Section-note
-  button covers the whole line, and a pinned tempo field stamps every note and status
-  change with the BPM you were running (one tap pulls it from the live metronome).
+- **Rehearsal Mode** (the landing screen) — player tiles grouped by instrument in a
+  fixed order (instrument, then label), three across on a phone. Tap a tile → a sheet
+  opens with the text field already focused, a dictation mic, and tag chips (your last
+  tag is preselected); Save is pinned at the bottom of the sheet so it's always in
+  reach with the keyboard up. Checkpoint link and rehearsal day fold away until you
+  need them. Long-press a tile to jump to that player's checkpoints. A persistent
+  Section-note button covers the whole line. If the metronome is running, every note
+  and status change is stamped with its BPM.
 - **Checkpoints** — 35 seeded technique standards across six phases (The Stroke → Time
   and Space → Two Heights → Diddles/Rolls/Flams → Marching Integration → Ensemble),
   with phase gates marked ★. Add, rename, reorder, and retire them in More →
@@ -29,16 +31,19 @@ before the next rep. Logging a note about a player takes under 5 seconds and 3 t
   (with a "clean at X BPM" prompt on Passed). Every change appends to a season log —
   status history is never destroyed.
 - **Section View** — the planning screen: a checkpoint × player heatmap with a sticky
-  first column, gate status with who's blocking, weakest checkpoints ranked, and open
-  notes grouped by tag.
+  first column. Tap a cell to set one player; **tap a checkpoint name to assess the
+  whole line** — Everyone → Passed, then tap the exceptions back, one Undo-all on
+  close. Below the grid: gate status with who's blocking, passes per week, weakest
+  checkpoints (line-wide or per section), and open notes grouped by tag.
+- **Skills** (the other Section tab) — a per-section forced ranking for each skill:
+  every player holds one slot, strongest first, no ties. Rows nobody has ranked yet
+  show dimmed in roster order until you rank them (or tap "keep this order").
 - **Sessions** — rehearsal log. New sessions pre-fill focus from the line's lowest
   incomplete checkpoint and carry the previous session's "next time" forward. Notes
   taken that day attach automatically.
 - **Recordings** — record or import reference audio, mark baselines, and play any two
   back to back (the "week 1 vs now" demo for the kids).
 - **No confirmations on capture** — optimistic writes with an Undo toast.
-- **Sunlight mode** — a high-contrast light theme for reading in direct sun, one tap
-  from the rehearsal bar. Dark theme is the default.
 - **App lock** — optional PIN on launch (More → App lock).
 - **Backup** — manual JSON export/import (data-only, or full with recording audio).
   That export is the only way tracker data leaves the device.
@@ -162,12 +167,14 @@ src/
   db/drumline.ts            Tracker model: players, checkpoints, notes, sessions,
                             recordings, seed data, JSON backup
   state/                    React bindings: metronome, library, records, tracker,
-                            prefs (sunlight mode, tempo stamp, PIN), toasts
+                            prefs (PIN), live-BPM stamp, toasts
+  sync/sync.ts              Push+pull engine, watermarks in IndexedDB
   components/
     Metronome/              Full panel, docked panel, beat pads
     Library/                Folder tree
     Viewer/                 pdf.js setup and the multi-page renderer
-    Drumline/               Note sheet, status chips, player form
+    Drumline/               Note sheet, assess sheet, skills matrix, status chips,
+                            player form
   pages/                    Rehearsal, Player, Section, Sessions, Recordings,
                             More (roster/checkpoints/backup), Metronome, Library,
                             Practice, Progress

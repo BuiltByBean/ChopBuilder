@@ -8,11 +8,11 @@ import {
   toDateInput,
   useDrumline,
 } from '../../state/useDrumline'
-import { usePrefs } from '../../state/usePrefs'
+import { useRehearsalBpm } from '../../state/useRehearsalBpm'
 import { useToast } from '../../state/useToast'
 import { Sheet } from '../Sheet'
 import { PickerField } from '../PickerSheet'
-import { Mic, Trash } from '../icons'
+import { ChevronDown, Mic, Trash } from '../icons'
 
 /**
  * The 25-seconds-between-reps capture surface. Open → field is focused →
@@ -130,7 +130,7 @@ export function NoteSheet({
   const removeNote = useDrumline((s) => s.removeNote)
   const updateNote = useDrumline((s) => s.updateNote)
   const restoreNote = useDrumline((s) => s.restoreNote)
-  const rehearsalBpm = usePrefs((s) => s.rehearsalBpm)
+  const rehearsalBpm = useRehearsalBpm()
   const show = useToast((s) => s.show)
 
   const [body, setBody] = useState(edit?.body ?? '')
@@ -140,6 +140,9 @@ export function NoteSheet({
   const [noteDate, setNoteDate] = useState(() => toDateInput(edit ? edit.createdAt : Date.now()))
   // Edit mode can move a note to another player (or to the whole section).
   const [notePlayer, setNotePlayer] = useState(edit ? (edit.playerId ?? '') : '')
+  // Checkpoint link + rehearsal day are the after-the-fact fields; live
+  // capture keeps them folded so the sheet is textarea → tag → Save.
+  const [extras, setExtras] = useState(!!edit || !!defaultCheckpointId)
   const areaRef = useRef<HTMLTextAreaElement>(null)
 
   const player = playerId ? players.find((p) => p.id === playerId) : null
@@ -240,11 +243,25 @@ export function NoteSheet({
 
   const metaBpm = edit ? edit.bpm : rehearsalBpm
 
+  const footer = (
+    <div className="sheet-actions note-save-row">
+      {edit && (
+        <button className="btn tall ghost danger note-delete" onClick={del} onMouseDown={keepKeyboard}>
+          <Trash size={15} />
+        </button>
+      )}
+      <button className="btn tall primary" disabled={!ready} onClick={save} onMouseDown={keepKeyboard}>
+        {ready ? (edit ? 'Save changes' : `Save — ${tag}`) : !body.trim() ? 'Type or dictate first' : 'Pick a tag'}
+      </button>
+    </div>
+  )
+
   return (
     <Sheet
       title={title}
       onClose={onClose}
       meta={metaBpm ? <span className="bpm-stamp">@ {metaBpm} BPM</span> : undefined}
+      footer={footer}
     >
       <div className="note-input-row">
         <textarea
@@ -304,43 +321,50 @@ export function NoteSheet({
         </div>
       )}
 
-      <div className="form-row note-cp">
-        {phaseGroups.length > 0 && (
-          <div className="grow">
-            <PickerField
-              id="note-cp"
-              label="Link checkpoint (optional)"
-              title="Link a checkpoint"
-              value={cpLink}
-              groups={phaseGroups}
-              onChange={setCpLink}
-              noneLabel="None"
+      {!extras ? (
+        <button
+          type="button"
+          className="note-extras-toggle"
+          onClick={() => setExtras(true)}
+          onMouseDown={keepKeyboard}
+        >
+          <span>
+            {cpLink
+              ? checkpoints.find((c) => c.id === cpLink)?.name ?? 'Checkpoint linked'
+              : 'Link a checkpoint'}
+            {' · '}
+            {sameLocalDay(fromDateInput(noteDate), Date.now()) ? 'Today' : fmtDay(fromDateInput(noteDate))}
+          </span>
+          <ChevronDown size={14} />
+        </button>
+      ) : (
+        <div className="form-row note-cp">
+          {phaseGroups.length > 0 && (
+            <div className="grow">
+              <PickerField
+                id="note-cp"
+                label="Link checkpoint (optional)"
+                title="Link a checkpoint"
+                value={cpLink}
+                groups={phaseGroups}
+                onChange={setCpLink}
+                noneLabel="None"
+              />
+            </div>
+          )}
+          <div className="field date-field">
+            <label htmlFor="note-date">Rehearsal day</label>
+            <input
+              id="note-date"
+              className="input"
+              type="date"
+              value={noteDate}
+              max={toDateInput(Date.now())}
+              onChange={(e) => setNoteDate(e.target.value)}
             />
           </div>
-        )}
-        <div className="field date-field">
-          <label htmlFor="note-date">Rehearsal day</label>
-          <input
-            id="note-date"
-            className="input"
-            type="date"
-            value={noteDate}
-            max={toDateInput(Date.now())}
-            onChange={(e) => setNoteDate(e.target.value)}
-          />
         </div>
-      </div>
-
-      <div className="sheet-actions note-save-row">
-        {edit && (
-          <button className="btn tall ghost danger note-delete" onClick={del} onMouseDown={keepKeyboard}>
-            <Trash size={15} />
-          </button>
-        )}
-        <button className="btn tall primary" disabled={!ready} onClick={save} onMouseDown={keepKeyboard}>
-          {ready ? (edit ? 'Save changes' : `Save — ${tag}`) : !body.trim() ? 'Type or dictate first' : 'Pick a tag'}
-        </button>
-      </div>
+      )}
     </Sheet>
   )
 }

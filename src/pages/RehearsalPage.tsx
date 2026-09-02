@@ -2,13 +2,14 @@ import { useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   instrumentGroup,
+  isPositionLabel,
   playerName,
   type Player,
 } from '../db/drumline'
 import {
   frontierOf,
   progressOf,
-  rosterOrder,
+  stableOrder,
   useDrumline,
 } from '../state/useDrumline'
 import { NoteSheet } from '../components/Drumline/NoteSheet'
@@ -22,17 +23,14 @@ import { NoteIcon, UserPlus } from '../components/icons'
 export function RehearsalPage() {
   const loaded = useDrumline((s) => s.loaded)
   const players = useDrumline((s) => s.players)
-  const checkpoints = useDrumline((s) => s.checkpoints)
-  const pcs = useDrumline((s) => s.pcs)
   const notes = useDrumline((s) => s.notes)
 
   const [sheet, setSheet] = useState<{ playerId: string | null } | null>(null)
 
   const active = useMemo(() => players.filter((p) => p.active), [players])
-  const ordered = useMemo(
-    () => rosterOrder(active, checkpoints, pcs, notes),
-    [active, checkpoints, pcs, notes],
-  )
+  // Fixed positions: instrument, then label. A tile that hops around after a
+  // note is logged is a mis-tap waiting to happen.
+  const ordered = useMemo(() => stableOrder(active), [active])
 
   const groups = useMemo(() => {
     const out: { name: string; members: Player[] }[] = []
@@ -131,10 +129,16 @@ function PlayerTile({
   const pct = prog.total > 0 ? Math.round((prog.passed / prog.total) * 100) : 0
 
   // A nameless bass's display name IS its instrument — a sub-line repeating
-  // it verbatim is noise, not information.
+  // it verbatim is noise, not information. Position-label players (Build
+  // line) carry a default grade nobody entered, so it stays off too.
   const name = playerName(player)
-  let sub = player.instrument.startsWith('Bass') ? player.instrument : `Gr ${player.gradeLevel}`
-  if (player.isSectionLeader) sub += ' · SL'
+  const position = isPositionLabel(player)
+  let sub = player.instrument.startsWith('Bass')
+    ? player.instrument
+    : position
+      ? ''
+      : `Gr ${player.gradeLevel}`
+  if (player.isSectionLeader) sub = sub ? `${sub} · SL` : 'SL'
   if (sub === name) sub = ''
 
   // Long-press → player detail; tap → note sheet. Movement cancels (scrolling).

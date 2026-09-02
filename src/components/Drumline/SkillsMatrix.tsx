@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { playerName, type SectionName, type Skill } from '../../db/drumline'
 import {
   activeSkills,
+  isRanked,
   rankingFor,
   sectionPlayers,
   sectionsOf,
@@ -79,19 +80,39 @@ export function SkillsMatrix() {
           <div className="sk-list">
             {list.map((sk) => {
               const ranked = rankingFor(skillRanks, sk.id, section, players)
+              // Until the coach orders a row it's just roster order — shown
+              // muted, with no "weakest" call-out, so nobody reads a default
+              // as a verdict.
+              const done = isRanked(skillRanks, sk.id, section)
               return (
-                <section key={sk.id} className="sk-block">
-                  <button className="sk-skill-btn" onClick={() => setManage(sk)}>
-                    {sk.name}
-                    <Pencil size={11} />
-                  </button>
+                <section key={sk.id} className={`sk-block${done ? '' : ' unranked'}`}>
+                  <div className="sk-head">
+                    <button className="sk-skill-btn" onClick={() => setManage(sk)}>
+                      {sk.name}
+                      <Pencil size={11} />
+                    </button>
+                    {!done && (
+                      <button
+                        className="btn xs ghost sk-confirm"
+                        onClick={() =>
+                          setSkillOrder(
+                            sk.id,
+                            section,
+                            ranked.map((p) => p.id),
+                          )
+                        }
+                      >
+                        Not ranked · keep this order
+                      </button>
+                    )}
+                  </div>
                   <div className="sk-row">
                     {ranked.map((p, i) => {
                       const armed = sel?.skillId === sk.id && sel.playerId === p.id
                       return (
                         <button
                           key={p.id}
-                          className={`sk-cell${armed ? ' armed' : ''}${i === n - 1 ? ' weak' : ''}`}
+                          className={`sk-cell${armed ? ' armed' : ''}${done && i === n - 1 ? ' weak' : ''}`}
                           onClick={() => {
                             if (!sel || sel.skillId !== sk.id) {
                               setSel({ skillId: sk.id, playerId: p.id })
@@ -116,7 +137,8 @@ export function SkillsMatrix() {
           </div>
 
           <p className="sk-hint">
-            1 = strongest · {n} = weakest. Tap a name, then tap the slot it belongs in.
+            1 = strongest · {n} = weakest. Tap a name, then tap the slot it belongs in. Dimmed rows
+            are still in roster order — rank them, or keep the order as is.
           </p>
         </>
       )}

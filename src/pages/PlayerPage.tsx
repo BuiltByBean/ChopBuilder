@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import {
   PHASE_NAMES,
   STATUS_LABEL,
+  isPositionLabel,
   nextStatus,
   playerName,
   type Checkpoint,
@@ -22,7 +23,7 @@ import {
   tempoOf,
   useDrumline,
 } from '../state/useDrumline'
-import { usePrefs } from '../state/usePrefs'
+import { useRehearsalBpm } from '../state/useRehearsalBpm'
 import { useToast } from '../state/useToast'
 import { NoteSheet } from '../components/Drumline/NoteSheet'
 import { PassSheet, ProgressBar, StatusChip, GateStar } from '../components/Drumline/common'
@@ -45,7 +46,7 @@ export function PlayerPage() {
   const undoStatus = useDrumline((s) => s.undoStatus)
   const setNoteResolved = useDrumline((s) => s.setNoteResolved)
   const updatePlayer = useDrumline((s) => s.updatePlayer)
-  const rehearsalBpm = usePrefs((s) => s.rehearsalBpm)
+  const rehearsalBpm = useRehearsalBpm()
   const show = useToast((s) => s.show)
 
   const [passFor, setPassFor] = useState<Checkpoint | null>(null)
@@ -130,7 +131,9 @@ export function PlayerPage() {
             {!player.active && <span className="bench-badge">Benched</span>}
           </h2>
           <p className="player-sub">
-            {player.instrument} · Grade {player.gradeLevel} · Year {player.yearsInProgram + 1}
+            {isPositionLabel(player)
+              ? player.instrument
+              : `${player.instrument} · Grade ${player.gradeLevel} · Year ${player.yearsInProgram + 1}`}
           </p>
         </div>
         <button className="btn icon ghost" onClick={() => setEditOpen(true)} aria-label="Edit player">

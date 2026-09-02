@@ -7,6 +7,11 @@ interface SheetProps {
   children: ReactNode
   /** Extra chip rendered next to the title (e.g. the BPM stamp). */
   meta?: ReactNode
+  /**
+   * Pinned below the scrolling body — the primary action lives here so it
+   * stays in reach no matter how tall the body is or where the keyboard sits.
+   */
+  footer?: ReactNode
 }
 
 /** Sheets can stack (a picker opens over the note sheet); Escape only closes the top one. */
@@ -17,7 +22,7 @@ const sheetStack: symbol[] = []
  * so every control is in thumb reach; on iOS the fixed positioning rides up
  * with the keyboard, which is exactly what a composer wants.
  */
-export function Sheet({ title, onClose, children, meta }: SheetProps) {
+export function Sheet({ title, onClose, children, meta, footer }: SheetProps) {
   useEffect(() => {
     const me = Symbol('sheet')
     sheetStack.push(me)
@@ -35,7 +40,7 @@ export function Sheet({ title, onClose, children, meta }: SheetProps) {
   return (
     <div className="sheet-wrap" role="dialog" aria-modal="true">
       <div className="sheet-backdrop" onMouseDown={onClose} />
-      <div className="sheet">
+      <div className={`sheet${footer ? ' has-foot' : ''}`}>
         <div className="sheet-grip" aria-hidden="true" />
         <div className="sheet-head">
           <h3>{title}</h3>
@@ -45,6 +50,7 @@ export function Sheet({ title, onClose, children, meta }: SheetProps) {
           </button>
         </div>
         <div className="sheet-body">{children}</div>
+        {footer && <div className="sheet-foot">{footer}</div>}
       </div>
     </div>
   )
