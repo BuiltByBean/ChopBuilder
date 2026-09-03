@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   NOTE_TAGS,
@@ -12,6 +12,7 @@ import {
   type Player,
 } from '../db/drumline'
 import {
+  absentIds,
   gateReports,
   orderedCheckpoints,
   passesPerWeek,
@@ -29,7 +30,7 @@ import { GateStar } from '../components/Drumline/common'
 import { NoteSheet } from '../components/Drumline/NoteSheet'
 import { AssessSheet } from '../components/Drumline/AssessSheet'
 import { SkillsMatrix } from '../components/Drumline/SkillsMatrix'
-import { Check, Pencil } from '../components/icons'
+import { Check, Pencil, Plus } from '../components/icons'
 import type { SectionName } from '../db/drumline'
 
 /**
@@ -38,6 +39,20 @@ import type { SectionName } from '../db/drumline'
  * columns scroll sideways.
  */
 const MODE_KEY = 'chopbuilder:sectionMode'
+const LAYOUT_KEY = 'chopbuilder:sectionLayout'
+
+/** Phone-width? Tracks the same breakpoint the CSS uses for the tab bar. */
+function useIsPhone() {
+  const q = '(max-width: 720px)'
+  const [phone, setPhone] = useState(() => window.matchMedia(q).matches)
+  useEffect(() => {
+    const mq = window.matchMedia(q)
+    const on = () => setPhone(mq.matches)
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
+  return phone
+}
 
 export function SectionPage() {
   const players = useDrumline((s) => s.players)
@@ -47,6 +62,24 @@ export function SectionPage() {
 
   const [cell, setCell] = useState<{ player: Player; cp: Checkpoint } | null>(null)
   const [assess, setAssess] = useState<Checkpoint | null>(null)
+  // Phones default to the readable list; the grid is a tap away and remembered.
+  const phone = useIsPhone()
+  const [layout, setLayout] = useState<'list' | 'grid'>(() => {
+    try {
+      return localStorage.getItem(LAYOUT_KEY) === 'grid' ? 'grid' : 'list'
+    } catch {
+      return 'list'
+    }
+  })
+  const pickLayout = (l: 'list' | 'grid') => {
+    setLayout(l)
+    try {
+      localStorage.setItem(LAYOUT_KEY, l)
+    } catch {
+      /* ignore */
+    }
+  }
+  const showList = phone && layout === 'list'
   const [mode, setMode] = useState<'checkpoints' | 'skills'>(() => {
     try {
       return localStorage.getItem(MODE_KEY) === 'skills' ? 'skills' : 'checkpoints'
@@ -104,6 +137,24 @@ export function SectionPage() {
         <SkillsMatrix />
       ) : (
         <>
+      {phone && (
+        <div className="layout-row">
+          <div className="seg layout-seg">
+            <button aria-pressed={layout === 'list'} onClick={() => pickLayout('list')}>
+              List
+            </button>
+            <button aria-pressed={layout === 'grid'} onClick={() => pickLayout('grid')}>
+              Grid
+            </button>
+          </div>
+          <Link to="/more/checkpoints" className="btn sm ghost">
+            <Plus size={14} /> Edit checkpoints
+          </Link>
+        </div>
+      )}
+      {showList ? (
+        <CheckpointList cols={cols} rows={rows} onRow={setAssess} />
+      ) : (
       <div className="heatwrap" role="grid" aria-label="Checkpoint heatmap">
         <table className="heatmap">
           <thead>
@@ -137,6 +188,7 @@ export function SectionPage() {
         </table>
       </div>
 
+      )}
       <div className="hm-legend">
         {STATUSES.map((s) => (
           <span key={s}>
@@ -145,7 +197,9 @@ export function SectionPage() {
         ))}
       </div>
       <p className="grid-hint hm-hint">
-        Tap a cell to set one player · tap a checkpoint name to assess the whole line
+        {showList
+          ? 'Tap a checkpoint to assess the whole line · the strip is one block per player'
+          : 'Tap a cell to set one player · tap a checkpoint name to assess the whole line'}
       </p>
 
       <section className="gate-block">
@@ -191,6 +245,71 @@ export function SectionPage() {
       {assess && <AssessSheet cp={assess} onClose={() => setAssess(null)} />}
         </>
       )}
+    </div>
+  )
+}
+
+/**
+ * Phone layout for the checkpoint map: one full-width row per checkpoint,
+ * name at reading size, and a strip of one block per player (in the same
+ * fixed order as the rehearsal tiles) so "who's red on this" is still a
+ * glance. Tap → assess the line.
+ */
+function CheckpointList({
+  cols,
+  rows,
+  onRow,
+}: {
+  cols: Player[]
+  rows: Checkpoint[]
+  onRow: (cp: Checkpoint) => void
+}) {
+  const pcs = useDrumline((s) => s.pcs)
+  const notes = useDrumline((s) => s.notes)
+  const absent = useMemo(() => absentIds(notes), [notes])
+  const present = useMemo(() => cols.filter((p) => !absent.has(p.id)), [cols, absent])
+  let lastPhase = 0
+
+  return (
+    <div className="cp-list">
+      {rows.map((cp) => {
+        const head = cp.phase !== lastPhase
+        lastPhase = cp.phase
+        const passed = present.filter((p) => statusOf(pcs, p.id, cp.id) === 'passed').length
+        const clear = present.length > 0 && passed === present.length
+        return (
+          <div key={cp.id}>
+            {head && (
+              <h4 className="section-label cp-list-phase">
+                Phase {cp.phase} — {PHASE_NAMES[cp.phase]}
+              </h4>
+            )}
+            <button
+              className={`cp-list-row${cp.gateFlag ? ' gate' : ''}${clear ? ' clear' : ''}`}
+              onClick={() => onRow(cp)}
+              aria-label={`${cp.name}: ${passed} of ${present.length} passed. Assess the line.`}
+            >
+              <span className="cp-list-name">
+                {cp.gateFlag && <GateStar size={12} />}
+                {cp.name}
+              </span>
+              <span className="cp-list-meta">
+                <span className="cp-list-strip" aria-hidden="true">
+                  {cols.map((p) => (
+                    <i
+                      key={p.id}
+                      className={absent.has(p.id) ? 'absent' : `st-bg-${statusOf(pcs, p.id, cp.id)}`}
+                    />
+                  ))}
+                </span>
+                <b className="cp-list-count">
+                  {passed}/{present.length}
+                </b>
+              </span>
+            </button>
+          </div>
+        )
+      })}
     </div>
   )
 }

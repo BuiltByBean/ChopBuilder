@@ -444,6 +444,12 @@ export async function putPlayer(p: Player) {
 export async function putCheckpoint(c: Checkpoint) {
   await putSynced('dlCheckpoints', c)
 }
+export async function deleteCheckpoint(id: string) {
+  await deleteSynced('dlCheckpoints', id)
+}
+export async function deletePlayerCheckpoint(id: string) {
+  await deleteSynced('dlPlayerCheckpoints', id)
+}
 export async function putCheckpoints(list: Checkpoint[]) {
   const d = await db()
   const now = Date.now()

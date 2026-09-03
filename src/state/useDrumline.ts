@@ -78,9 +78,16 @@ interface DrumlineState {
   /** Puts a deleted note back exactly as it was — the delete toast's Undo. */
   restoreNote: (n: Note) => void
 
-  addCheckpoint: (input: Omit<Checkpoint, 'id' | 'createdAt' | 'sortOrder'>) => void
+  addCheckpoint: (input: Omit<Checkpoint, 'id' | 'createdAt' | 'sortOrder'>) => Checkpoint
   updateCheckpoint: (id: string, patch: Partial<Omit<Checkpoint, 'id'>>) => void
   moveCheckpoint: (id: string, dir: -1 | 1) => void
+  /**
+   * Hard delete: the checkpoint and every status/log row about it. Returns a
+   * snapshot so the undo toast can put it all back. Retiring is the gentle
+   * option — this is for standards the coach never wants to see again.
+   */
+  removeCheckpoint: (id: string) => CheckpointSnapshot | null
+  restoreCheckpoint: (snap: CheckpointSnapshot) => void
 
   addSession: (input: Omit<Session, 'id' | 'createdAt'>) => Session
   updateSession: (id: string, patch: Partial<Omit<Session, 'id'>>) => void
@@ -96,6 +103,12 @@ interface DrumlineState {
 
   /** Re-read every store from IndexedDB — after a sync pull or a backup import. */
   reloadFromDb: () => Promise<void>
+}
+
+export interface CheckpointSnapshot {
+  checkpoint: Checkpoint
+  pcs: PlayerCheckpoint[]
+  history: StatusChange[]
 }
 
 export const useDrumline = create<DrumlineState>((set, get) => ({
@@ -254,10 +267,52 @@ export const useDrumline = create<DrumlineState>((set, get) => ({
   },
 
   addCheckpoint: (input) => {
-    const maxOrder = Math.max(0, ...get().checkpoints.map((c) => c.sortOrder))
+    // New rows land at the end of their own phase, not the end of the list.
+    const maxOrder = Math.max(
+      0,
+      ...get()
+        .checkpoints.filter((c) => c.phase === input.phase)
+        .map((c) => c.sortOrder),
+    )
     const c: Checkpoint = { ...input, id: uid(), sortOrder: maxOrder + 10, createdAt: Date.now() }
     set((s) => ({ checkpoints: [...s.checkpoints, c] }))
     persist(api.putCheckpoint(c))
+    return c
+  },
+
+  removeCheckpoint: (id) => {
+    const checkpoint = get().checkpoints.find((c) => c.id === id)
+    if (!checkpoint) return null
+    const pcs = Object.values(get().pcs).filter((pc) => pc.checkpointId === id)
+    const history = get().history.filter((h) => h.checkpointId === id)
+    set((s) => {
+      const next = { ...s.pcs }
+      for (const pc of pcs) delete next[pc.id]
+      return {
+        checkpoints: s.checkpoints.filter((c) => c.id !== id),
+        pcs: next,
+        history: s.history.filter((h) => h.checkpointId !== id),
+      }
+    })
+    persist(api.deleteCheckpoint(id))
+    for (const pc of pcs) persist(api.deletePlayerCheckpoint(pc.id))
+    for (const h of history) persist(api.deleteHistory(h.id))
+    return { checkpoint, pcs, history }
+  },
+
+  restoreCheckpoint: (snap) => {
+    set((s) => {
+      const next = { ...s.pcs }
+      for (const pc of snap.pcs) next[pc.id] = pc
+      return {
+        checkpoints: [...s.checkpoints.filter((c) => c.id !== snap.checkpoint.id), snap.checkpoint],
+        pcs: next,
+        history: [...s.history, ...snap.history].sort((a, b) => a.at - b.at),
+      }
+    })
+    persist(api.putCheckpoint(snap.checkpoint))
+    for (const pc of snap.pcs) persist(api.putPlayerCheckpoint(pc))
+    for (const h of snap.history) persist(api.putHistory(h))
   },
 
   updateCheckpoint: (id, patch) => {
